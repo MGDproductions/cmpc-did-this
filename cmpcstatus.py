@@ -11,7 +11,7 @@ import datetime
 import os
 from discord.utils import get
 
-with open("common-words.txt") as f:
+with open("assets/common-words.txt") as f:
             words = f.read().split('\n')
 
 with open('config.json') as config_file:
@@ -46,7 +46,7 @@ async def on_member_join(member):
         strip_width, strip_height = 471, 155
         unwrapped = "Welcome! " + member.name
         text = "\n".join(textwrap.wrap(unwrapped, width=19))
-        background = Image.open('bg.png').convert('RGBA')
+        background = Image.open('assets/bg.png').convert('RGBA')
         font = ImageFont.truetype("font.ttf", 40)
         shadowcolor = "black"
         draw = ImageDraw.Draw(background)
@@ -179,7 +179,7 @@ async def fish():
                 await channel.set_permissions(channel.guild.default_role, overwrite=perms)
                 embed=discord.Embed(title="Fish gaming wednesday has ended.", color=0x69CCE7)
                 embed.set_image(url=("attachment://" + "fgwends.png"))
-                file = discord.File("fgwends.png", filename="fgwends.png")
+                file = discord.File("fgwends.png", filename="assets/fgwends.png")
                 embed.add_field(name="In 5 minutes this channel will be hidden.", value="** **", inline=False)
                 message = await channel.send(file=file, embed=embed)
                 await asyncio.sleep(60)
