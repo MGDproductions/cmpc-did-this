@@ -1,0 +1,9 @@
+{
+  "youtube_developer_key" : "",
+  "tenor_api_key" : "",
+  "bot_token" : "",
+  "clock" : "false",
+  "welcome" : "false",
+  "fishgamingwednesday" : "false",
+  "birthday": "false"
+}
