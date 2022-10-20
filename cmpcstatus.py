@@ -1,15 +1,17 @@
-import discord
-from discord.ext.commands import Bot
 import asyncio
+import datetime
+import json
+import os
+import random
+import textwrap
+
+import discord
 import pytz
 import requests
-import random
-import json
 from PIL import Image, ImageFont, ImageDraw
-import textwrap
-import datetime
-import os
+from discord.ext.commands import Bot
 from discord.utils import get
+
 
 with open("assets/common-words.txt") as f:
             words = f.read().split('\n')
