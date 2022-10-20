@@ -1,27 +1,14 @@
 import discord
-import sys
-import time
 from discord.ext.commands import Bot
-from discord.ext import commands, tasks
 import asyncio
 import pytz
-import aiohttp
 import requests
-import configparser
-import sqlite3
-from googleapiclient.discovery import build
 import random
 import json
-import os
 from PIL import Image, ImageFont, ImageDraw
 import textwrap
 import datetime
-from traceback import format_exception
-import inspect
-import io
-import contextlib
 import os
-import calendar
 from discord.utils import get
 
 with open("common-words.txt") as f:
