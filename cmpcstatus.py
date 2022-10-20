@@ -170,36 +170,27 @@ async def fish():
                 print("fish gaming wednesday started")
                 await channel.send(file=discord.File(r'fishgamingwednesday.mp4'))
         if weekday != 3:
-            if fishgaming == True:
+            if fishgaming:
                 perms = channel.overwrites_for(channel.guild.default_role)
-                perms.send_messages=False
+                perms.send_messages = False
                 await channel.set_permissions(channel.guild.default_role, overwrite=perms)
-                embed=discord.Embed(title="Fish gaming wednesday has ended.", color=0x69CCE7)
+
+                embed = discord.Embed(title="Fish gaming wednesday has ended.", color=0x69CCE7)
                 embed.set_image(url=("attachment://" + "fgwends.png"))
                 file = discord.File("fgwends.png", filename="assets/fgwends.png")
                 embed.add_field(name="In 5 minutes this channel will be hidden.", value="** **", inline=False)
                 message = await channel.send(file=file, embed=embed)
+
+                for i in range(4, 1, -1):
+                    await asyncio.sleep(60)
+                    embed.fields[0].name = f"In {i} minutes this channel will be hidden."
+                    await message.edit(embed=embed)
+
                 await asyncio.sleep(60)
-                embed2=discord.Embed(title="Fish gaming wednesday has ended.", color=0x69CCE7)
-                embed2.set_image(url=("attachment://" + "fgwends.png"))
-                embed2.add_field(name="In 4 minutes this channel will be hidden.", value="** **", inline=False)
-                await message.edit(embed=embed2)
+                embed.fields[0].name = "In 1 minute this channel will be hidden."
+                await message.edit(embed=embed)
                 await asyncio.sleep(60)
-                embed3=discord.Embed(title="Fish gaming wednesday has ended.", color=0x69CCE7)
-                embed3.set_image(url=("attachment://" + "fgwends.png"))
-                embed3.add_field(name="In 3 minutes this channel will be hidden.", value="** **", inline=False)
-                await message.edit(embed=embed3)
-                await asyncio.sleep(60)
-                embed4=discord.Embed(title="Fish gaming wednesday has ended.", color=0x69CCE7)
-                embed4.set_image(url=("attachment://" + "fgwends.png"))
-                embed4.add_field(name="In 2 minutes this channel will be hidden.", value="** **", inline=False)
-                await message.edit(embed=embed4)
-                await asyncio.sleep(60)
-                embed5=discord.Embed(title="Fish gaming wednesday has ended.", color=0x69CCE7)
-                embed5.set_image(url=("attachment://" + "fgwends.png"))
-                embed5.add_field(name="In 1 minute this channel will be hidden.", value="** **", inline=False)
-                await message.edit(embed=embed5)
-                await asyncio.sleep(60)
+
                 perms = channel.overwrites_for(channel.guild.default_role)
                 perms.view_channel=False
                 #not working but needs to be fixed
