@@ -289,5 +289,11 @@ async def fish():
 #     await bot.wait_until_ready()
 #     countdown.start()
 
-print("Connecting to discord...")
-bot.run(data['bot_token'])
+
+def main():
+    print("Connecting to discord...")
+    bot.run(data['bot_token'])
+
+
+if __name__ == '__main__':
+    main()
