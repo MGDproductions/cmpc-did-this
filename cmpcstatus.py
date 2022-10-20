@@ -49,7 +49,7 @@ async def on_member_join(member):
         unwrapped = "Welcome! " + member.name
         text = "\n".join(textwrap.wrap(unwrapped, width=19))
         background = Image.open('assets/bg.png').convert('RGBA')
-        font = ImageFont.truetype("font.ttf", 40)
+        font = ImageFont.truetype("assets/Berlin Sans FB Demi Bold.ttf", 40)
         shadowcolor = "black"
         draw = ImageDraw.Draw(background)
         text_width, text_height = draw.textsize(text, font)
