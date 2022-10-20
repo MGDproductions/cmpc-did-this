@@ -214,80 +214,80 @@ async def fish():
         await asyncio.sleep(60)
         await fish()
         
-#if data['birthday'] == "true":
-    #@tasks.loop(minutes=1)
-    #async def birthday_update():
-            #global birthday
-            #cest = pytz.timezone('Europe/London')
-            #datetime_cest = datetime.datetime.now(cest)
-            #weekday = False
-            #channel = bot.get_channel(982687737503182858)
-            #if "06-05" in str(datetime_cest):
-                #if birthday == False:
-                    #perms = channel.overwrites_for(channel.guild.default_role)
-                    #perms.send_messages=True
-                   # perms.view_channel=True
-                   # await channel.set_permissions(channel.guild.default_role, overwrite=perms)
-                   # await channel.send("@everyone It's Marcel's birthday today! As a birthday gift he wants all the cat pictures in the world. Drop them in this chat before he wakes up!")
-      #              birthday = True
-      #              print("Marcel's birthday started")
-      ##              await channel.send(file=discord.File(r'birthday.mp4'))
-        #    if "06-05" not in str(datetime_cest):
-        #        if birthday == True:
-        #            perms = channel.overwrites_for(channel.guild.default_role)
-      #              perms.send_messages=False
-          #          await channel.set_permissions(channel.guild.default_role, overwrite=perms)
-         #           embed=discord.Embed(title="Marcel's birthday has ended.", color=0x69CCE7)
-        #            embed.add_field(name="In 5 minutes this channel will be hidden.", value="** **", inline=False)
-        #            message = await channel.send(embed=embed)
-        #            await asyncio.sleep(60)
-        #            embed2=discord.Embed(title="Marcel's birthday has ended.", color=0x69CCE7)
-       #             embed2.add_field(name="In 4 minutes this channel will be hidden.", value="** **", inline=False)
-             #       await message.edit(embed=embed2)
-            #        await asyncio.sleep(60)
-             #       embed3=discord.Embed(title="Marcel's birthday has ended.", color=0x69CCE7)
-            #        embed3.add_field(name="In 3 minutes this channel will be hidden.", value="** **", inline=False)
-           #         await message.edit(embed=embed3)
-            #        await asyncio.sleep(60)
-            #        embed4=discord.Embed(title="Marcel's birthday has ended.", color=0x69CCE7)
-          #          embed4.add_field(name="In 2 minutes this channel will be hidden.", value="** **", inline=False)
-             #       await message.edit(embed=embed4)
-            #        await asyncio.sleep(60)
-          #  #        embed5=discord.Embed(title="Marcel's birthday has ended.", color=0x69CCE7)
-            #        embed5.add_field(name="In 1 minute this channel will be hidden.", value="** **", inline=False)
-          #          await message.edit(embed=embed5)
-            #        await asyncio.sleep(60)
-          #          perms = channel.overwrites_for(channel.guild.default_role)
-        #            perms.view_channel=False
-        #            await channel.set_permissions(channel.guild.default_role, overwrite=perms)
-               #     embed6=discord.Embed(title="Marcel's birthday has ended.", color=0x69CCE7)
-               #     await message.edit(embed=embed6)
-              #      birthday = False
-
- #   @birthday_update.before_loop
-  #  async def before_birthday_update():
- #       await bot.wait_until_ready()
-   # birthday_update.start()
-    
-#@tasks.loop(minutes=10)
-#async def countdown():
-    #difference = datetime.datetime(2021, 7, 4, 18, 0, 0) - datetime.datetime.now()
-    #count_hours, rem = divmod(difference.seconds, 3600)
-    #count_minutes, count_seconds = divmod(rem, 60)
-    #channel = bot.get_channel(858737401048465420)
-    #channel2 = bot.get_channel(858737233112727552)
-    #if difference.days < 0:
-        #await channel.delete()
-        #await channel2.edit(name="Goodbye cmpc.")
-        #countdown.cancel()
-    #countdowntime = (str(count_hours) + "h " + str(count_minutes) + "m ")
-    #print(countdowntime)
-    #await channel.edit(name=countdowntime)
-
-#@countdown.before_loop
-#async def before_countdown():
-    #await bot.wait_until_ready()
-    #countdown.start()
+# if data['birthday'] == "true":
+#     @tasks.loop(minutes=1)
+#     async def birthday_update():
+#             global birthday
+#             cest = pytz.timezone('Europe/London')
+#             datetime_cest = datetime.datetime.now(cest)
+#             weekday = False
+#             channel = bot.get_channel(982687737503182858)
+#             if "06-05" in str(datetime_cest):
+#                 if birthday == False:
+#                     perms = channel.overwrites_for(channel.guild.default_role)
+#                     perms.send_messages=True
+#                    perms.view_channel=True
+#                    await channel.set_permissions(channel.guild.default_role, overwrite=perms)
+#                    await channel.send("@everyone It's Marcel's birthday today! As a birthday gift he wants all the cat pictures in the world. Drop them in this chat before he wakes up!")
+#                    birthday = True
+#                    print("Marcel's birthday started")
+#       #              await channel.send(file=discord.File(r'birthday.mp4'))
+#            if "06-05" not in str(datetime_cest):
+#                if birthday == True:
+#                    perms = channel.overwrites_for(channel.guild.default_role)
+#                    perms.send_messages=False
+#                    await channel.set_permissions(channel.guild.default_role, overwrite=perms)
+#                    embed=discord.Embed(title="Marcel's birthday has ended.", color=0x69CCE7)
+#                    embed.add_field(name="In 5 minutes this channel will be hidden.", value="** **", inline=False)
+#                    message = await channel.send(embed=embed)
+#                    await asyncio.sleep(60)
+#                    embed2=discord.Embed(title="Marcel's birthday has ended.", color=0x69CCE7)
+#                    embed2.add_field(name="In 4 minutes this channel will be hidden.", value="** **", inline=False)
+#                    await message.edit(embed=embed2)
+#                    await asyncio.sleep(60)
+#                    embed3=discord.Embed(title="Marcel's birthday has ended.", color=0x69CCE7)
+#                    embed3.add_field(name="In 3 minutes this channel will be hidden.", value="** **", inline=False)
+#                    await message.edit(embed=embed3)
+#                    await asyncio.sleep(60)
+#                    embed4=discord.Embed(title="Marcel's birthday has ended.", color=0x69CCE7)
+#                    embed4.add_field(name="In 2 minutes this channel will be hidden.", value="** **", inline=False)
+#                    await message.edit(embed=embed4)
+#                    await asyncio.sleep(60)
+#            #        embed5=discord.Embed(title="Marcel's birthday has ended.", color=0x69CCE7)
+#                    embed5.add_field(name="In 1 minute this channel will be hidden.", value="** **", inline=False)
+#                    await message.edit(embed=embed5)
+#                    await asyncio.sleep(60)
+#                    perms = channel.overwrites_for(channel.guild.default_role)
+#                    perms.view_channel=False
+#                    await channel.set_permissions(channel.guild.default_role, overwrite=perms)
+#                    embed6=discord.Embed(title="Marcel's birthday has ended.", color=0x69CCE7)
+#                    await message.edit(embed=embed6)
+#                    birthday = False
+#
+#    @birthday_update.before_loop
+#    async def before_birthday_update():
+#        await bot.wait_until_ready()
+#    birthday_update.start()
+#
+# @tasks.loop(minutes=10)
+# async def countdown():
+#     difference = datetime.datetime(2021, 7, 4, 18, 0, 0) - datetime.datetime.now()
+#     count_hours, rem = divmod(difference.seconds, 3600)
+#     count_minutes, count_seconds = divmod(rem, 60)
+#     channel = bot.get_channel(858737401048465420)
+#     channel2 = bot.get_channel(858737233112727552)
+#     if difference.days < 0:
+#         await channel.delete()
+#         await channel2.edit(name="Goodbye cmpc.")
+#         countdown.cancel()
+#     countdowntime = (str(count_hours) + "h " + str(count_minutes) + "m ")
+#     print(countdowntime)
+#     await channel.edit(name=countdowntime)
+#
+# @countdown.before_loop
+# async def before_countdown():
+#     await bot.wait_until_ready()
+#     countdown.start()
 
 print("Connecting to discord...")
 bot.run(data['bot_token'])
