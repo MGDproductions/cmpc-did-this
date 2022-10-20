@@ -34,7 +34,7 @@ apikey = data['tenor_api_key']
 intents = discord.Intents.all()
 intents.members = True
 intents.messages = True
-fishgaming = True
+fishgaming = False
 birthday = False
 bot = Bot(command_prefix=['cmpc.','Cmpc.','CMPC.'],intents=intents)
 bot.remove_command('help')
