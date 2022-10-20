@@ -5,9 +5,9 @@ import os
 import random
 import textwrap
 
+import aiohttp
 import discord
 import pytz
-import requests
 from PIL import Image, ImageFont, ImageDraw
 from discord.ext.commands import Bot
 from discord.utils import get
@@ -92,8 +92,9 @@ async def on_message(message):
         await message.channel.send('hi there dude!')
 
     if message.content.startswith('random game'):
-        r = requests.get('http://store.steampowered.com/explore/random/') 
-        shorten = (r.url)
+        async with aiohttp.ClientSession() as session:
+            async with session.get('http://store.steampowered.com/explore/random/') as r:
+                shorten = r.url
         await message.channel.send(shorten.replace('?snr=1_239_random_', ''))
 
     if message.content.startswith('random number'):
@@ -122,24 +123,18 @@ async def on_message(message):
             search_random = "https://api.tenor.com/v1/random?key={}&q={}&limit=1&media_filter=basic".format(apikey, random.choice(words))
         elif len(split_random) >= 3:
             search_random = "https://api.tenor.com/v1/random?key={}&q={}&limit=1&media_filter=basic".format(apikey, split_random[2:])
-        random_request = requests.get(search_random)
-        if random_request.status_code == 200:
-            try:
-                json_random = random_request.json()['results']
-                gif = json_random[0]
-                title = gif['title']
-                ID = gif['id']
-                url = gif['url']
-                gif = gif.get("media")
-                gif = gif[0]
-                gif = gif.get("gif")
-                gif = gif.get("url")
-                if title == "":
-                    title = "None" 
-                    
-                await message.channel.send(url)
-            except:
-                await message.channel.send("{} I couldn't find a gif!".format(message.author.mention))
+        async with aiohttp.ClientSession() as session:
+            async with session.get(search_random) as random_request:
+                if random_request.ok:
+                    try:
+                        random_json = await random_request.json()
+                        results = random_json['results']
+                        gif = results[0]
+                        url = gif['url']
+
+                        await message.channel.send(url)
+                    except:
+                        await message.channel.send("{} I couldn't find a gif!".format(message.author.mention))
 
     await bot.process_commands(message)
 
