@@ -166,7 +166,7 @@ async def clock():
             ctime = "cmpc: " + ams_time 
             await channel.edit(name=ctime)
         await asyncio.sleep(60)
-        await clock()
+        asyncio.ensure_future(clock())
     
 async def fish():
     if data['fishgamingwednesday'] == "true":
@@ -228,7 +228,7 @@ async def fish():
                 await message.edit(embed=embed6)
                 fishgaming = False
         await asyncio.sleep(60)
-        await fish()
+        asyncio.ensure_future(fish())
         
 #if data['birthday'] == "true":
     #@tasks.loop(minutes=1)
