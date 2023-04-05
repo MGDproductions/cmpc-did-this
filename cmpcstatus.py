@@ -4,18 +4,18 @@ import json
 import os
 import random
 import textwrap
+from io import BytesIO
 
 import aiohttp
 import discord
 import pytz
-import requests as requests
 from PIL import Image, ImageFont, ImageDraw
 from discord.ext.commands import Bot
 from discord.utils import get
 
 
 with open("assets/common-words.txt") as f:
-            words = f.read().split('\n')
+    words = f.read().split('\n')
 
 with open('config.json') as config_file:
     data = json.load(config_file)
@@ -27,9 +27,10 @@ intents.messages = True
 fishgaming = True
 fishrestarting = True
 birthday = False
-bot = Bot(command_prefix=['cmpc.','Cmpc.','CMPC.'],intents=intents)
+bot = Bot(command_prefix=['cmpc.', 'Cmpc.', 'CMPC.'], intents=intents)
 bot.remove_command('help')
 cmpcoffline = []
+
 
 @bot.event
 async def on_ready():
@@ -39,6 +40,7 @@ async def on_ready():
     loop = asyncio.get_event_loop()
     asyncio.ensure_future(clock())
     asyncio.ensure_future(fish())
+
 
 @bot.event
 async def on_member_join(member):
@@ -55,26 +57,28 @@ async def on_member_join(member):
         shadowcolor = "black"
         draw = ImageDraw.Draw(background)
         text_width, text_height = draw.textsize(text, font)
-        imgWidth,imgHeight = background.size
+        imgWidth, imgHeight = background.size
         x = imgWidth - text_width - 100
         y = imgHeight - text_height - 100
-        position = ((strip_width-text_width)/2,(strip_height-text_height)/2)
+        position = ((strip_width-text_width)/2, (strip_height-text_height)/2)
         draw.text(position, text, color=(255, 255, 255), font=font, stroke_width=3, stroke_fill='black')
         channel = bot.get_channel(714154159590473801)
-        savestring = "cmpcwelcome" + str(random.randint(0,100000)) + ".png"
+        savestring = "cmpcwelcome" + str(random.randint(0, 100000)) + ".png"
         rgb_im = background.convert('RGB')
-        rgb_im.save(savestring,"PNG")
-        embed=discord.Embed(title=member.name + " joined!", color=0xff0000)
+        rgb_im.save(savestring, "PNG")
+        embed = discord.Embed(title=member.name + " joined!", color=0xff0000)
         file = discord.File(savestring, filename=savestring)
         embed.set_image(url=("attachment://" + savestring))
         await channel.send("<@" + str(member.id) + ">")
         await channel.send(file=file, embed=embed)
         os.remove(savestring)
 
+
 @bot.event
 async def on_member_remove(member):
     channel = bot.get_channel(714154159590473801)
     await channel.send(("<:sad_cat:770191103310823426> ***" + member.name + "*** left the eggyboi family <:sad_cat:770191103310823426>"))
+
 
 @bot.event
 async def on_message(message):
@@ -110,7 +114,7 @@ async def on_message(message):
             await message.channel.send("There is an error in your command.")
 
     if message.content.startswith('cmpc.help'):
-        embed=discord.Embed(title="cmpc did this commands", color=0x00ff00)
+        embed = discord.Embed(title="cmpc did this commands", color=0x00ff00)
         embed.add_field(name="random word", value="gives you a random word", inline=False)
         embed.add_field(name="random game", value="gives you a random game", inline=False)
         embed.add_field(name="random gif", value="gives you a random gif", inline=False)
@@ -120,15 +124,14 @@ async def on_message(message):
         
     if message.content.startswith("random capybara"):
         # todo move to aiohttp
-        img = Image.open(requests.get("https://api.capy.lol/v1/capybara", stream=True).raw)
-        savestring = "capybara" + str(random.randint(0, 100000)) + ".png"
-        rgb_im = img.convert('RGB')
-        rgb_im.save(savestring,"PNG")
-        embed=discord.Embed(title="capybara for u!", color=0xff0000)
-        file = discord.File(savestring, filename=savestring)
-        embed.set_image(url=("attachment://" + savestring))
+        async with aiohttp.ClientSession() as session:
+            async with session.get("https://api.capy.lol/v1/capybara") as response:
+                img_bytes = BytesIO(await response.content.read())
+        embed = discord.Embed(title="capybara for u!", color=0xff0000)
+        filename = 'capybara.png'
+        file = discord.File(img_bytes, filename=filename)
+        embed.set_image(url=("attachment://" + filename))
         await message.channel.send(file=file, embed=embed)
-        os.remove(savestring)
 
     if message.content.startswith("random gif"):
         message_random = message.content
@@ -153,6 +156,7 @@ async def on_message(message):
 
     await bot.process_commands(message)
 
+
 async def clock():
     if data['clock']:
         amsterdam = pytz.timezone('Europe/Amsterdam')
@@ -166,20 +170,20 @@ async def clock():
             await channel.edit(name=ctime)
         await asyncio.sleep(60)
         asyncio.ensure_future(clock())
-    
+
+
 async def fish():
     if data['fishgamingwednesday']:
         global fishgaming
         global fishrestarting
-        gmt = pytz.timezone('GMT')
         datetime_gmt = datetime.datetime.now()
         weekday = datetime_gmt.isoweekday()
         channel = bot.get_channel(875297517351358474)
         if weekday == 3:
-            if fishgaming == False and fishrestarting != True:
+            if fishrestarting and not fishgaming:
                 perms = channel.overwrites_for(channel.guild.default_role)
-                perms.send_messages=True
-                perms.view_channel=True
+                perms.send_messages = True
+                perms.view_channel = True
                 await channel.set_permissions(channel.guild.default_role, overwrite=perms)
                 await channel.send("<@&875359516131209256>")
                 fishgaming = True
