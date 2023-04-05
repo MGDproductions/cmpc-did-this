@@ -1,6 +1,7 @@
 import asyncio
 import datetime
 import json
+import logging
 import os
 import random
 import textwrap
@@ -10,7 +11,7 @@ import aiohttp
 import discord
 import pytz
 from PIL import Image, ImageFont, ImageDraw
-from discord.ext.commands import Bot
+from discord.ext import commands, tasks
 from discord.utils import get
 
 
@@ -26,24 +27,22 @@ intents.members = True
 intents.messages = True
 fishgaming = True
 fishrestarting = True
-gamingzon = False
 birthday = False
-bot = Bot(command_prefix=['cmpc.', 'Cmpc.', 'CMPC.'], intents=intents)
+bot = commands.Bot(command_prefix=['cmpc.', 'Cmpc.', 'CMPC.'], intents=intents)
 bot.remove_command('help')
 cmpcoffline = []
 
 
+# logging.basicConfig(level=logging.WARN)
+# print(logging.root.manager.loggerDict)
+
+
 @bot.event
 async def on_ready():
-    print('Connected to discord as: {0.user}'.format(bot))
-    print('done')
-    global gamingzon
-    if not gamingzon:
-        await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="the cmpc discord"))
-        loop = asyncio.get_event_loop()
-        asyncio.ensure_future(clock())
-        asyncio.ensure_future(fish())
-        gamingzon = True
+    print(f'Connected to discord as: {bot.user}')
+    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="the cmpc discord"))
+    clock.start()
+    fish.start()
 
 
 @bot.event
@@ -161,21 +160,21 @@ async def on_message(message):
     await bot.process_commands(message)
 
 
+@tasks.loop(seconds=60)
 async def clock():
     if data['clock']:
         amsterdam = pytz.timezone('Europe/Amsterdam')
         datetime_amsterdam = datetime.datetime.now(amsterdam)
         ams_time = datetime_amsterdam.strftime("%H:%M")
-        minute_check = datetime_amsterdam.strftime("%M")
-        if int(minute_check) % 10 == 0:
+        minute_check = datetime_amsterdam.minute
+        if minute_check % 10 == 0:
             print(f"time for cmpc:{ams_time}")
             channel = bot.get_channel(753467367966638100)
             ctime = "cmpc: " + ams_time 
             await channel.edit(name=ctime)
-        await asyncio.sleep(60)
-        asyncio.ensure_future(clock())
 
 
+@tasks.loop(seconds=60)
 async def fish():
     if data['fishgamingwednesday']:
         global fishgaming
@@ -220,7 +219,7 @@ async def fish():
 
                 perms = channel.overwrites_for(channel.guild.default_role)
                 perms.view_channel = False
-                #not working but needs to be fixed
+                # not working but needs to be fixed
                 #perms.create_public_threads=False
                 #perms.create_private_threads=False
                 #perms.send_messages_in_threads=False
@@ -229,8 +228,6 @@ async def fish():
                 embed6.set_image(url=("attachment://" + "fgwends.png"))
                 await message.edit(embed=embed6)
                 fishgaming = False
-        await asyncio.sleep(60)
-        asyncio.ensure_future(fish())
 
 
 def main():
