@@ -26,6 +26,7 @@ intents.members = True
 intents.messages = True
 fishgaming = True
 fishrestarting = True
+gamingzon = False
 birthday = False
 bot = Bot(command_prefix=['cmpc.', 'Cmpc.', 'CMPC.'], intents=intents)
 bot.remove_command('help')
@@ -36,10 +37,13 @@ cmpcoffline = []
 async def on_ready():
     print('Connected to discord as: {0.user}'.format(bot))
     print('done')
-    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="the cmpc discord"))
-    loop = asyncio.get_event_loop()
-    asyncio.ensure_future(clock())
-    asyncio.ensure_future(fish())
+    global gamingzon
+    if not gamingzon:
+        await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="the cmpc discord"))
+        loop = asyncio.get_event_loop()
+        asyncio.ensure_future(clock())
+        asyncio.ensure_future(fish())
+        gamingzon = True
 
 
 @bot.event
