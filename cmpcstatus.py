@@ -234,7 +234,10 @@ async def fish():
 
 def main():
     print("Connecting to discord...")
-    bot.run(data['bot_token'])
+    try:
+        bot.run(data['bot_token'])
+    except KeyboardInterrupt:
+        print('Exiting')
 
 
 if __name__ == '__main__':
