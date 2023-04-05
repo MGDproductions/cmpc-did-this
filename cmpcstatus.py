@@ -34,7 +34,8 @@ apikey = data['tenor_api_key']
 intents = discord.Intents.all()
 intents.members = True
 intents.messages = True
-fishgaming = False
+fishgaming = True
+fishrestarting = True
 birthday = False
 bot = Bot(command_prefix=['cmpc.','Cmpc.','CMPC.'],intents=intents)
 bot.remove_command('help')
@@ -122,8 +123,20 @@ async def on_message(message):
         embed.add_field(name="random word", value="gives you a random word", inline=False)
         embed.add_field(name="random game", value="gives you a random game", inline=False)
         embed.add_field(name="random gif", value="gives you a random gif", inline=False)
+        embed.add_field(name="random capybara", value="gives you a random capybara", inline=False)
         embed.add_field(name="random gif {search term}", value="gives you a random gif that matches your search term example: random gif cat", inline=False) 
         await message.channel.send(embed=embed)
+        
+    if message.content.startswith("random capybara"):
+        img = Image.open(requests.get("https://api.capy.lol/v1/capybara", stream=True).raw)
+        savestring = "capybara" + str(random.randint(0,100000)) + ".png"
+        rgb_im = img.convert('RGB')
+        rgb_im.save(savestring,"PNG")
+        embed=discord.Embed(title="capybara for u!", color=0xff0000)
+        file = discord.File(savestring, filename=savestring)
+        embed.set_image(url=("attachment://" + savestring))
+        await message.channel.send(file=file, embed=embed)
+        os.remove(savestring)
         
     if message.content.startswith("random gif"):
         message_random = message.content
@@ -171,12 +184,13 @@ async def clock():
 async def fish():
     if data['fishgamingwednesday'] == "true":
         global fishgaming
+        global fishrestarting
         gmt = pytz.timezone('GMT')
         datetime_gmt = datetime.datetime.now()
         weekday = datetime_gmt.isoweekday()
         channel = bot.get_channel(875297517351358474)
         if weekday == 3:
-            if fishgaming == False:
+            if fishgaming == False and fishrestarting != True:
                 perms = channel.overwrites_for(channel.guild.default_role)
                 perms.send_messages=True
                 perms.view_channel=True
@@ -185,8 +199,11 @@ async def fish():
                 fishgaming = True
                 print("fish gaming wednesday started")
                 await channel.send(file=discord.File(r'fishgamingwednesday.mp4'))
+            else:
+                fishgaming = True
         if weekday != 3:
             if fishgaming == True:
+                fishrestarting = False
                 perms = channel.overwrites_for(channel.guild.default_role)
                 perms.send_messages=False
                 await channel.set_permissions(channel.guild.default_role, overwrite=perms)
