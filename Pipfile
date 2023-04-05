@@ -8,6 +8,7 @@ name = "pypi"
 pillow = "*"
 pytz = "*"
 aiohttp = "*"
+requests = "*"
 
 [dev-packages]
 

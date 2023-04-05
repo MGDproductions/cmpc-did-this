@@ -8,6 +8,7 @@ import textwrap
 import aiohttp
 import discord
 import pytz
+import requests as requests
 from PIL import Image, ImageFont, ImageDraw
 from discord.ext.commands import Bot
 from discord.utils import get
@@ -118,6 +119,7 @@ async def on_message(message):
         await message.channel.send(embed=embed)
         
     if message.content.startswith("random capybara"):
+        # todo move to aiohttp
         img = Image.open(requests.get("https://api.capy.lol/v1/capybara", stream=True).raw)
         savestring = "capybara" + str(random.randint(0,100000)) + ".png"
         rgb_im = img.convert('RGB')
