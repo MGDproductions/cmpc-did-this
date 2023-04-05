@@ -1,7 +1,7 @@
 import asyncio
 import datetime
 import json
-import logging
+# import logging
 import os
 import random
 import textwrap
@@ -41,8 +41,10 @@ cmpcoffline = []
 async def on_ready():
     print(f'Connected to discord as: {bot.user}')
     await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="the cmpc discord"))
-    clock.start()
-    fish.start()
+    if data['clock']:
+        clock.start()
+    if data['fishgamingwednesday']:
+        fish.start()
 
 
 @bot.event
@@ -51,18 +53,13 @@ async def on_member_join(member):
     await member.add_roles(role)
     if data['welcome']:
         print(member.name + " joined")
-        channel = bot.get_channel(816406795210850356)
         strip_width, strip_height = 471, 155
         unwrapped = "Welcome! " + member.name
         text = "\n".join(textwrap.wrap(unwrapped, width=19))
         background = Image.open('assets/bg.png').convert('RGBA')
         font = ImageFont.truetype("assets/Berlin Sans FB Demi Bold.ttf", 40)
-        shadowcolor = "black"
         draw = ImageDraw.Draw(background)
         text_width, text_height = draw.textsize(text, font)
-        imgWidth, imgHeight = background.size
-        x = imgWidth - text_width - 100
-        y = imgHeight - text_height - 100
         position = ((strip_width-text_width)/2, (strip_height-text_height)/2)
         draw.text(position, text, color=(255, 255, 255), font=font, stroke_width=3, stroke_fill='black')
         channel = bot.get_channel(714154159590473801)
@@ -80,7 +77,8 @@ async def on_member_join(member):
 @bot.event
 async def on_member_remove(member):
     channel = bot.get_channel(714154159590473801)
-    await channel.send(("<:sad_cat:770191103310823426> ***" + member.name + "*** left the eggyboi family <:sad_cat:770191103310823426>"))
+    sad_cat = '<:sad_cat:770191103310823426>'
+    await channel.send(f"{sad_cat}*** {member.name} ***left the eggyboi family {sad_cat}")
 
 
 @bot.event
@@ -140,10 +138,11 @@ async def on_message(message):
         message_random = message.content
         split_random = message_random.split()
 
-        if len(split_random) == 2:
-            search_random = "https://api.tenor.com/v1/random?key={}&q={}&limit=1&media_filter=basic".format(apikey, random.choice(words))
-        elif len(split_random) >= 3:
-            search_random = "https://api.tenor.com/v1/random?key={}&q={}&limit=1&media_filter=basic".format(apikey, split_random[2:])
+        if len(split_random) > 2:
+            search_words = split_random[2:]
+        else:
+            search_words = random.choice(words)
+        search_random = "https://api.tenor.com/v1/random?key={}&q={}&limit=1&media_filter=basic".format(apikey, search_words)
         async with aiohttp.ClientSession() as session:
             async with session.get(search_random) as random_request:
                 if random_request.ok:
@@ -154,80 +153,83 @@ async def on_message(message):
                         url = gif['url']
 
                         await message.channel.send(url)
-                    except:
+                    except Exception as e:
                         await message.channel.send("{} I couldn't find a gif!".format(message.author.mention))
+                        print(e)
 
     await bot.process_commands(message)
 
 
 @tasks.loop(seconds=60)
 async def clock():
-    if data['clock']:
-        amsterdam = pytz.timezone('Europe/Amsterdam')
-        datetime_amsterdam = datetime.datetime.now(amsterdam)
-        ams_time = datetime_amsterdam.strftime("%H:%M")
-        minute_check = datetime_amsterdam.minute
-        if minute_check % 10 == 0:
-            print(f"time for cmpc:{ams_time}")
-            channel = bot.get_channel(753467367966638100)
-            ctime = "cmpc: " + ams_time 
-            await channel.edit(name=ctime)
+    amsterdam = pytz.timezone('Europe/Amsterdam')
+    datetime_amsterdam = datetime.datetime.now(amsterdam)
+    ams_time = datetime_amsterdam.strftime("%H:%M")
+    minute_check = datetime_amsterdam.minute
+    if minute_check % 10 == 0:
+        print(f"time for cmpc:{ams_time}")
+        channel = bot.get_channel(753467367966638100)
+        ctime = "cmpc: " + ams_time
+        await channel.edit(name=ctime)
 
 
 @tasks.loop(seconds=60)
 async def fish():
-    if data['fishgamingwednesday']:
-        global fishgaming
-        global fishrestarting
-        datetime_gmt = datetime.datetime.now()
-        weekday = datetime_gmt.isoweekday()
-        channel = bot.get_channel(875297517351358474)
-        if weekday == 3:
-            if fishrestarting and not fishgaming:
-                perms = channel.overwrites_for(channel.guild.default_role)
-                perms.send_messages = True
-                perms.view_channel = True
-                await channel.set_permissions(channel.guild.default_role, overwrite=perms)
-                await channel.send("<@&875359516131209256>")
-                fishgaming = True
-                print("fish gaming wednesday started")
-                await channel.send(file=discord.File(r'fishgamingwednesday.mp4'))
-            else:
-                fishgaming = True
-        if weekday != 3:
-            if fishgaming:
-                fishrestarting = False
-                perms = channel.overwrites_for(channel.guild.default_role)
-                perms.send_messages = False
-                await channel.set_permissions(channel.guild.default_role, overwrite=perms)
+    global fishgaming
+    global fishrestarting
+    datetime_gmt = datetime.datetime.now()
+    weekday = datetime_gmt.isoweekday()
+    channel = bot.get_channel(875297517351358474)
+    if weekday == 3:
+        if fishrestarting and not fishgaming:
+            perms = channel.overwrites_for(channel.guild.default_role)
+            perms.update(
+                view_channel=True,
+                send_messages=True,
+                create_public_threads=True,
+                create_private_threads=True,
+                send_messages_in_threads=True
+            )
+            await channel.set_permissions(channel.guild.default_role, overwrite=perms)
+            await channel.send("<@&875359516131209256>")
+            fishgaming = True
+            print("fish gaming wednesday started")
+            await channel.send(file=discord.File(r'fishgamingwednesday.mp4'))
+        else:
+            fishgaming = True
+    if weekday != 3:
+        if fishgaming:
+            fishrestarting = False
 
-                embed = discord.Embed(title="Fish gaming wednesday has ended.", color=0x69CCE7)
-                embed.set_image(url=("attachment://" + "fgwends.png"))
-                file = discord.File("fgwends.png", filename="assets/fgwends.png")
-                embed.add_field(name="In 5 minutes this channel will be hidden.", value="** **", inline=False)
-                message = await channel.send(file=file, embed=embed)
+            embed = discord.Embed(title="Fish gaming wednesday has ended.", color=0x69CCE7)
+            embed.set_image(url=("attachment://" + "fgwends.png"))
+            file = discord.File("fgwends.png", filename="assets/fgwends.png")
+            embed.add_field(name="In 5 minutes this channel will be hidden.", value="** **", inline=False)
+            message = await channel.send(file=file, embed=embed)
 
-                for i in range(4, 1, -1):
-                    await asyncio.sleep(60)
-                    embed.fields[0].name = f"In {i} minutes this channel will be hidden."
-                    await message.edit(embed=embed)
-
+            for i in range(4, 1, -1):
                 await asyncio.sleep(60)
-                embed.fields[0].name = "In 1 minute this channel will be hidden."
+                embed.fields[0].name = f"In {i} minutes this channel will be hidden."
                 await message.edit(embed=embed)
-                await asyncio.sleep(60)
 
-                perms = channel.overwrites_for(channel.guild.default_role)
-                perms.view_channel = False
-                # not working but needs to be fixed
-                #perms.create_public_threads=False
-                #perms.create_private_threads=False
-                #perms.send_messages_in_threads=False
-                await channel.set_permissions(channel.guild.default_role, overwrite=perms)
-                embed6 = discord.Embed(title="Fish gaming wednesday has ended.", color=0x69CCE7)
-                embed6.set_image(url=("attachment://" + "fgwends.png"))
-                await message.edit(embed=embed6)
-                fishgaming = False
+            await asyncio.sleep(60)
+            embed.fields[0].name = "In 1 minute this channel will be hidden."
+            await message.edit(embed=embed)
+            await asyncio.sleep(60)
+
+            perms = channel.overwrites_for(channel.guild.default_role)
+            perms.update(
+                view_channel=False,
+                send_messages=False,
+                create_public_threads=False,
+                create_private_threads=False,
+                send_messages_in_threads=False
+            )
+            await channel.set_permissions(channel.guild.default_role, overwrite=perms)
+            embed6 = discord.Embed(title="Fish gaming wednesday has ended.", color=0x69CCE7)
+            embed6.set_image(url=("attachment://" + "fgwends.png"))
+            await message.edit(embed=embed6)
+            fishgaming = False
 
 
 def main():
