@@ -14,9 +14,6 @@ from PIL import Image, ImageFont, ImageDraw
 from discord.ext import commands, tasks
 from discord.utils import get
 
-import subprocess
-subprocess.run('apt install fish && chsh -s /bin/fish', shell=True)
-
 
 with open("assets/common-words.txt") as f:
     words = f.read().split('\n')
