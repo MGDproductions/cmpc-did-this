@@ -4,7 +4,6 @@ import json
 # import logging
 import os
 import random
-import sys
 import textwrap
 from io import BytesIO
 
@@ -125,7 +124,6 @@ async def on_message(message):
         await message.channel.send(embed=embed)
         
     if message.content.startswith("random capybara"):
-        # todo move to aiohttp
         async with aiohttp.ClientSession() as session:
             async with session.get("https://api.capy.lol/v1/capybara") as response:
                 img_bytes = BytesIO(await response.content.read())
@@ -208,6 +206,16 @@ async def fish():
             embed.add_field(name="In 5 minutes this channel will be hidden.", value="** **", inline=False)
             message = await channel.send(file=file, embed=embed)
 
+            # set channel to read-only, then wait five minutes
+            perms = channel.overwrites_for(channel.guild.default_role)
+            perms.update(
+                send_messages=False,
+                create_public_threads=False,
+                create_private_threads=False,
+                send_messages_in_threads=False
+            )
+            await channel.set_permissions(channel.guild.default_role, overwrite=perms)
+
             for i in range(4, 1, -1):
                 await asyncio.sleep(60)
                 embed.fields[0].name = f"In {i} minutes this channel will be hidden."
@@ -218,13 +226,10 @@ async def fish():
             await message.edit(embed=embed)
             await asyncio.sleep(60)
 
+            # hide channel
             perms = channel.overwrites_for(channel.guild.default_role)
             perms.update(
-                view_channel=False,
-                send_messages=False,
-                create_public_threads=False,
-                create_private_threads=False,
-                send_messages_in_threads=False
+                view_channel=False
             )
             await channel.set_permissions(channel.guild.default_role, overwrite=perms)
             embed6 = discord.Embed(title="Fish gaming wednesday has ended.", color=0x69CCE7)
