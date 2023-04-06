@@ -237,6 +237,11 @@ def main():
     except KeyboardInterrupt:
         print('Exiting')
 
+import atexit
+def test():
+    print('TEST! EXITING')
+atexit.register(test)
+
 
 if __name__ == '__main__':
     main()
