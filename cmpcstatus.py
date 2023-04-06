@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import random
+import sys
 import textwrap
 from io import BytesIO
 
@@ -234,13 +235,15 @@ def main():
     print("Connecting to discord...")
     try:
         bot.run(data['bot_token'])
+        print('here')
     except KeyboardInterrupt:
         print('Exiting')
 
-import atexit
+import signal
 def test():
     print('TEST! EXITING')
-atexit.register(test)
+    sys.exit()
+signal.signal(signal.SIGTERM, test)
 
 
 if __name__ == '__main__':
