@@ -60,7 +60,7 @@ async def on_member_join(member):
         background = Image.open('assets/bg.png').convert('RGBA')
         font = ImageFont.truetype("assets/Berlin Sans FB Demi Bold.ttf", 40)
         draw = ImageDraw.Draw(background)
-        text_width, text_height = draw.textsize(text, font)
+        _left, _top, text_width, text_height = draw.textbbox((0, 0), text, font=font)
         position = ((strip_width-text_width)/2, (strip_height-text_height)/2)
         draw.text(position, text, color=(255, 255, 255), font=font, stroke_width=3, stroke_fill='black')
         channel = bot.get_channel(714154159590473801)
