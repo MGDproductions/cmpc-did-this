@@ -4,6 +4,7 @@ import json
 # import logging
 import os
 import random
+import sys
 import textwrap
 from io import BytesIO
 
@@ -234,10 +235,7 @@ async def fish():
 
 def main():
     print("Connecting to discord...")
-    try:
-        bot.run(data['bot_token'])
-    except KeyboardInterrupt:
-        print('Exiting')
+    bot.run(data['bot_token'])
 
 
 if __name__ == '__main__':
