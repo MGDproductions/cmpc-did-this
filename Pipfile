@@ -8,6 +8,8 @@ name = "pypi"
 pillow = "*"
 pytz = "*"
 aiohttp = "*"
+aiosqlite = "*"
+profanity-check = "*"
 
 [dev-packages]
 

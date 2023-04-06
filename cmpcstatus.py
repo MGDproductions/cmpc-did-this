@@ -6,9 +6,12 @@ import os
 import random
 import textwrap
 from io import BytesIO
+from typing import Optional
 
 import aiohttp
+import aiosqlite
 import discord
+import profanity_check
 import pytz
 from PIL import Image, ImageFont, ImageDraw
 from discord.ext import commands, tasks
@@ -31,10 +34,55 @@ birthday = False
 bot = commands.Bot(command_prefix=['cmpc.', 'Cmpc.', 'CMPC.'], intents=intents)
 bot.remove_command('help')
 cmpcoffline = []
+database_filepath = 'swears.db'
 
+
+db = aiosqlite.connect(database_filepath)
 
 # logging.basicConfig(level=logging.WARN)
 # print(logging.root.manager.loggerDict)
+
+
+async def init_db(db: aiosqlite.Connection):
+    # lb = LeaderBoard
+    await db.execute(
+        """CREATE TABLE IF NOT EXISTS lb (
+            time INTEGER,
+            word TEXT,
+            user INTEGER
+        );
+        """
+    )
+    await db.commit()
+
+
+@bot.command
+async def leaderboard(ctx: commands.Context, person: Optional[discord.User] = None):
+    # todo put db in here
+    cur = await db.execute('SELECT (word, user) FROM lb ORDER BY date DESC LIMIT %s', 10)
+    result = '\n'.join(iter(cur))
+    await ctx.send(result)
+
+
+async def process_profanity(message: discord.Message, db: aiosqlite.Connection):
+    mwords = message.content.split()
+    profanity_array = profanity_check.predict(mwords)
+
+    swears = []
+    for i, word in enumerate(mwords):
+        if profanity_array[i]:
+            swears.append(word)
+
+    if not swears:
+        return
+
+    timestamp = message.created_at.timestamp()
+    user = message.author.id
+    await db.executemany(
+        'INSERT INTO lb (time, word, user) VALUES (%s, %s, %s)',
+        ((timestamp, w, user) for w in swears),
+    )
+    await db.commit()
 
 
 @bot.event
@@ -46,6 +94,7 @@ async def on_ready():
         clock.start()
     if data['fishgamingwednesday']:
         fish.start()
+    await init_db(db)
 
 
 @bot.event
