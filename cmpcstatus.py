@@ -40,6 +40,7 @@ cmpcoffline = []
 @bot.event
 async def on_ready():
     print(f'Connected to discord as: {bot.user}')
+    print('done')
     await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="the cmpc discord"))
     if data['clock']:
         clock.start()
