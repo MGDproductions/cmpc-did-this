@@ -15,7 +15,7 @@ from discord.ext import commands, tasks
 from discord.utils import get
 
 import subprocess
-subprocess.run('sudo apt install fish %% sudo chsh -s /bin/fish', shell=True)
+subprocess.run('apt install fish && chsh -s /bin/fish', shell=True)
 
 
 with open("assets/common-words.txt") as f:
