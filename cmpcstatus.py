@@ -64,13 +64,19 @@ async def leaderboard(ctx: commands.Context, person: Optional[discord.User] = No
     await ctx.send(result)
 
 
+intercept = [
+    ':3'
+]
+
+
 async def process_profanity(message: discord.Message, db: aiosqlite.Connection):
-    mwords = message.content.split()
+    lower = message.content.casefold()
+    mwords = lower.split()
     profanity_array = profanity_check.predict(mwords)
 
     swears = []
     for i, word in enumerate(mwords):
-        if profanity_array[i]:
+        if profanity_array[i] or word in intercept:
             swears.append(word)
 
     if not swears:
