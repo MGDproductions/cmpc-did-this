@@ -14,7 +14,5 @@ multidict==6.0.4 ; python_version >= '3.7'
 numpy==1.24.2 ; python_version >= '3.8'
 pillow==9.5.0
 pytz==2023.3
-scikit-learn==1.2.2 ; python_version >= '3.8'
-scipy==1.10.1 ; python_version < '3.12' and python_version >= '3.8'
 threadpoolctl==3.1.0 ; python_version >= '3.6'
 yarl==1.8.2 ; python_version >= '3.7'
