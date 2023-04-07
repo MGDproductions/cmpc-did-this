@@ -11,7 +11,6 @@ from typing import Optional
 import aiohttp
 import aiosqlite
 import discord
-import profanity_check
 import pytz
 from PIL import Image, ImageFont, ImageDraw
 from discord.ext import commands, tasks
@@ -149,7 +148,7 @@ async def on_member_remove(member):
 
 @bot.event
 async def on_message(message):
-    await process_profanity(message)
+    #await process_profanity(message)
 
     if message.author == bot.user:
         return
