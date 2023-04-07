@@ -1,7 +1,6 @@
 import asyncio
 import datetime
 import json
-# import logging
 import os
 import random
 import sys
@@ -32,37 +31,59 @@ intents.messages = True
 fishgaming = True
 fishrestarting = True
 birthday = False
-bot = commands.Bot(command_prefix=['cmpc.', 'Cmpc.', 'CMPC.'], intents=intents)
+
+
+class CmpcDidThis(commands.Bot):
+    def __init__(self, *args, **kwargs):
+        self.conn: Optional[aiosqlite.Connection] = None
+        self.session: Optional[aiohttp.ClientSession] = None
+        super().__init__(*args, **kwargs)
+
+    async def on_ready(self):
+        if self.conn is None:
+            self.conn = await aiosqlite.connect('db.sqlite3')
+            await self.conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS lb (
+                    time INTEGER,
+                    user INTEGER,
+                    word TEXT
+                );
+                """
+            )
+            await self.conn.commit()
+        if self.session is None:
+            self.session = aiohttp.ClientSession()
+        await bot.change_presence(
+            activity=discord.Activity(type=discord.ActivityType.watching, name="the cmpc discord"))
+        if data['clock'] and not clock.is_running():
+            clock.start()
+        if data['fishgamingwednesday'] and not fish.is_running():
+            fish.start()
+
+        print(f'Connected to discord as: {bot.user}')
+        print('done')  # this line is needed to work with ptero
+
+    async def close(self):
+        await super().close()
+        await self.conn.close()
+        await self.session.close()
+
+
+bot = CmpcDidThis(command_prefix=['cmpc.', 'Cmpc.', 'CMPC.'], intents=intents)
 bot.remove_command('help')
-cmpcoffline = []
-database_filepath = 'swears.db'
 
 
-db = aiosqlite.connect(database_filepath)
-
-# logging.basicConfig(level=logging.WARN)
-# print(logging.root.manager.loggerDict)
-
-
-async def init_db(db: aiosqlite.Connection):
-    # lb = LeaderBoard
-    await db.execute(
-        """CREATE TABLE IF NOT EXISTS lb (
-            time INTEGER,
-            word TEXT,
-            user INTEGER
-        );
-        """
-    )
-    await db.commit()
-
-
-@bot.command
+@bot.command()
 async def leaderboard(ctx: commands.Context, person: Optional[discord.User] = None):
-    # todo put db in here
-    cur = await db.execute('SELECT (word, user) FROM lb ORDER BY date DESC LIMIT %s', 10)
-    result = '\n'.join(iter(cur))
-    await ctx.send(result)
+    # todo more functionality
+    async with bot.conn.execute_fetchall(
+            'SELECT word, user FROM lb ORDER BY time DESC LIMIT :count ;', {'count': 10}
+    ) as rows:
+        if not rows:
+            return await ctx.send('Nothing to report')
+        message = '\n'.join(str(r) for r in rows)
+    await ctx.send(message)
 
 
 intercept = [
@@ -70,7 +91,7 @@ intercept = [
 ]
 
 
-async def process_profanity(message: discord.Message, db: aiosqlite.Connection):
+async def process_profanity(message: discord.Message):
     lower = message.content.casefold()
     mwords = lower.split()
     profanity_array = profanity_check.predict(mwords)
@@ -85,23 +106,11 @@ async def process_profanity(message: discord.Message, db: aiosqlite.Connection):
 
     timestamp = message.created_at.timestamp()
     user = message.author.id
-    await db.executemany(
-        'INSERT INTO lb (time, word, user) VALUES (%s, %s, %s)',
-        ((timestamp, w, user) for w in swears),
+    await bot.conn.executemany(
+        'INSERT INTO lb (time, user, word) VALUES (?, ?, ?);',
+        ((timestamp, user, word,) for word in swears),
     )
-    await db.commit()
-
-
-@bot.event
-async def on_ready():
-    print(f'Connected to discord as: {bot.user}')
-    print('done')
-    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="the cmpc discord"))
-    if data['clock']:
-        clock.start()
-    if data['fishgamingwednesday']:
-        fish.start()
-    await init_db(db)
+    await bot.conn.commit()
 
 
 @bot.event
@@ -140,6 +149,7 @@ async def on_member_remove(member):
 
 @bot.event
 async def on_message(message):
+    await process_profanity(message)
 
     if message.author == bot.user:
         return
@@ -156,7 +166,7 @@ async def on_message(message):
         await message.channel.send('hi there dude!')
 
     if message.content.startswith('random game'):
-        async with aiohttp.ClientSession() as session:
+        async with bot.session as session:
             async with session.get('http://store.steampowered.com/explore/random/') as r:
                 shorten = str(r.url).replace('?snr=1_239_random_', '')
         await message.channel.send(shorten)
@@ -168,7 +178,7 @@ async def on_message(message):
             endnumber = splitmessage[3]
             randomnumber = random.randint(int(startnumber), int(endnumber))
             await message.channel.send(randomnumber)
-        except:
+        except (IndexError, ValueError):
             await message.channel.send("There is an error in your command.")
 
     if message.content.startswith('cmpc.help'):
@@ -177,11 +187,14 @@ async def on_message(message):
         embed.add_field(name="random game", value="gives you a random game", inline=False)
         embed.add_field(name="random gif", value="gives you a random gif", inline=False)
         embed.add_field(name="random capybara", value="gives you a random capybara", inline=False)
-        embed.add_field(name="random gif {search term}", value="gives you a random gif that matches your search term example: random gif cat", inline=False)
+        embed.add_field(
+            name="random gif {search term}",
+            value="gives you a random gif that matches your search term example: random gif cat", inline=False
+        )
         await message.channel.send(embed=embed)
         
     if message.content.startswith("random capybara"):
-        async with aiohttp.ClientSession() as session:
+        async with bot.session as session:
             async with session.get("https://api.capy.lol/v1/capybara") as response:
                 img_bytes = BytesIO(await response.content.read())
         embed = discord.Embed(title="capybara for u!", color=0xff0000)
@@ -198,8 +211,10 @@ async def on_message(message):
             search_words = split_random[2:]
         else:
             search_words = random.choice(words)
-        search_random = "https://api.tenor.com/v1/random?key={}&q={}&limit=1&media_filter=basic".format(apikey, search_words)
-        async with aiohttp.ClientSession() as session:
+        search_random = "https://api.tenor.com/v1/random?key={}&q={}&limit=1&media_filter=basic".format(
+            apikey, search_words
+        )
+        async with bot.session as session:
             async with session.get(search_random) as random_request:
                 if random_request.ok:
                     try:
@@ -295,14 +310,15 @@ async def fish():
             fishgaming = False
 
 
-def author_is_mod(interaction: discord.Interaction) -> bool:
+def author_is_mod(interaction) -> bool:
     # mod role
-    return get(interaction.user.roles, id=725356663850270821) is not None
+    return get(interaction.author.roles, id=725356663850270821) is not None
 
 
 @bot.command(hidden=True)
 @commands.check(author_is_mod)
 async def shutdown(ctx: commands.Context, restart: bool = True):
+    print('Received shutdown order')
     if restart:
         message = 'Restarting'
         exit_code = 7
@@ -312,7 +328,6 @@ async def shutdown(ctx: commands.Context, restart: bool = True):
         message = 'Shutting down'
         exit_code = 0
     await ctx.send(message)
-    await ctx.bot.close()
     sys.exit(exit_code)
 
 
