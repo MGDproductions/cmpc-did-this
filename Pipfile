@@ -9,7 +9,7 @@ pillow = "*"
 pytz = "*"
 aiohttp = "*"
 aiosqlite = "*"
-profanity-check = "*"
+alt-profanity-check = "*"
 
 [dev-packages]
 
