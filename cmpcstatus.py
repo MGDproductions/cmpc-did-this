@@ -318,12 +318,14 @@ def author_is_mod(interaction) -> bool:
 @bot.command(hidden=True)
 @commands.check(author_is_mod)
 async def shutdown(ctx: commands.Context, restart: bool = True):
+    # works with pterodactyl
     print('Received shutdown order')
     if restart:
         message = 'Restarting'
         exit_code = 7
     else:
-        if not ctx.bot.is_owner(ctx.author):
+        if not await ctx.bot.is_owner(ctx.author):
+            print('No')
             return
         message = 'Shutting down'
         exit_code = 0
