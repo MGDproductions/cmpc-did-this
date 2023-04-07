@@ -4,6 +4,7 @@ import json
 # import logging
 import os
 import random
+import sys
 import textwrap
 from io import BytesIO
 from typing import Optional
@@ -292,6 +293,27 @@ async def fish():
             embed6.set_image(url=("attachment://" + "fgwends.png"))
             await message.edit(embed=embed6)
             fishgaming = False
+
+
+def author_is_mod(interaction: discord.Interaction) -> bool:
+    # mod role
+    return get(interaction.user.roles, id=725356663850270821) is not None
+
+
+@bot.command(hidden=True)
+@commands.check(author_is_mod)
+async def shutdown(ctx: commands.Context, restart: bool = True):
+    if restart:
+        message = 'Restarting'
+        exit_code = 7
+    else:
+        if not ctx.bot.is_owner(ctx.author):
+            return
+        message = 'Shutting down'
+        exit_code = 0
+    await ctx.send(message)
+    await ctx.bot.close()
+    sys.exit(exit_code)
 
 
 def main():
