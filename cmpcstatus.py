@@ -79,8 +79,16 @@ class CmpcDidThis(commands.Bot):
         await self.session.close()
 
 
-# todo make better
-bot = CmpcDidThis(command_prefix=['c.', 'cmpc.', 'Cmpc.', 'CMPC.'], intents=intents)
+def command_prefix(bot: commands.Bot, message: discord.Message) -> str:
+    prefixes = ['cmpc.', 'c.', 'random ']  # space is intentional
+    m = message.content.casefold()
+    for p in prefixes:
+        if m.startswith(p):
+            return p
+    return None
+
+
+bot = CmpcDidThis(command_prefix=command_prefix, intents=intents, case_insensitive=True)
 bot.remove_command('help')
 
 
