@@ -36,6 +36,8 @@ birthday = False
 intercept = [
     ':3'
 ]
+# need to differ between slurs and normal profanity.
+# encrypt database entries?
 profanity.load_censor_words()
 profanity.add_censor_words(intercept)
 
@@ -52,9 +54,9 @@ class CmpcDidThis(commands.Bot):
             await self.conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS lb (
-                    time INTEGER,
-                    user INTEGER,
-                    word TEXT
+                    time INTEGER NOT NULL,
+                    user INTEGER NOT NULL,
+                    word TEXT NOT NULL
                 );
                 """
             )
@@ -82,20 +84,28 @@ bot = CmpcDidThis(command_prefix=['c.', 'cmpc.', 'Cmpc.', 'CMPC.'], intents=inte
 bot.remove_command('help')
 
 
-@bot.command(aliases=['lb'])
-async def leaderboard(ctx: commands.Context, person: Optional[discord.User] = None):
-    # todo more functionality
-    async with bot.conn.execute_fetchall(
-            'SELECT word, user FROM lb ORDER BY time DESC LIMIT :count;', {'count': 10}
+async def query_overall(conn: aiosqlite.Connection) -> discord.Embed:
+    # idk how this works but it sure does
+    # or, in sql language:
+    # IDK HOW this, WORKS BUT (it) SURE DOES
+    async with conn.execute_fetchall(
+        'SELECT word, COUNT(*) AS num FROM lb GROUP BY word ORDER BY num DESC LIMIT 10;',
     ) as rows:
-        if not rows:
-            return await ctx.send('Nothing to report')
-        message = '\n'.join(str(r) for r in rows)
-    await ctx.send(message)
+        total = sum(r[1] for r in rows)
+        content = '\n'.join(f'{r[0]} ({r[1]})' for r in rows)
+    embed = discord.Embed(description=content)
+    embed.set_footer(text=f'Total {total}')
+    return embed
+
+
+@bot.command(aliases=['lb'])
+async def leaderboard(ctx: commands.Context, person: Optional[discord.Member] = None):
+    embed = await query_overall(ctx.bot.conn)
+
+    await ctx.send(embed=embed)
 
 
 def profanity_predict(pwords: list[str]) -> list[bool]:
-    # todo return iterable insead?
     profanity_array = [profanity.contains_profanity(x) for x in pwords]
     return profanity_array
 
