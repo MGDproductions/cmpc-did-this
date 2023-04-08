@@ -84,23 +84,44 @@ bot = CmpcDidThis(command_prefix=['c.', 'cmpc.', 'Cmpc.', 'CMPC.'], intents=inte
 bot.remove_command('help')
 
 
-async def query_overall(conn: aiosqlite.Connection) -> discord.Embed:
-    # idk how this works but it sure does
-    # or, in sql language:
-    # IDK HOW this, WORKS BUT (it) SURE DOES
-    async with conn.execute_fetchall(
-        'SELECT word, COUNT(*) AS num FROM lb GROUP BY word ORDER BY num DESC LIMIT 10;',
-    ) as rows:
+# lock bicking lawyer
+@bot.command(aliases=['lbl'])
+async def leaderblame(ctx: commands.Context, word: str):
+    query = 'SELECT user, COUNT(*) AS num FROM lb WHERE word = ? GROUP BY user ORDER BY num DESC LIMIT 10;'
+    arg = (word,)
+    thumb = None
+    title = word
+    async with ctx.bot.conn.execute_fetchall(query, arg) as rows:
         total = sum(r[1] for r in rows)
-        content = '\n'.join(f'{r[0]} ({r[1]})' for r in rows)
-    embed = discord.Embed(description=content)
-    embed.set_footer(text=f'Total {total}')
-    return embed
+
+    content = '\n'.join(f'{get(ctx.guild.members, id=r[0]).mention} ({r[1]})' for r in rows)
+    embed = discord.Embed(title=title, description=content)
+    embed.set_footer(text=f'Total {total}', icon_url=thumb)
+
+    await ctx.send(embed=embed)
 
 
 @bot.command(aliases=['lb'])
-async def leaderboard(ctx: commands.Context, person: Optional[discord.Member] = None):
-    embed = await query_overall(ctx.bot.conn)
+async def leaderboard(ctx: commands.Context, person: Optional[discord.Member]):
+    # idk how this works but it sure does
+    # or, in sql language:
+    # IDK HOW this, WORKS BUT (it) SURE DOES
+    if person is not None:
+        query = 'SELECT word, COUNT(*) AS num FROM lb WHERE user = ? GROUP BY word ORDER BY num DESC LIMIT 10;'
+        arg = (person.id,)
+        thumb = person.avatar.url
+        title = person.name
+    else:
+        query = 'SELECT word, COUNT(*) AS num FROM lb GROUP BY word ORDER BY num DESC LIMIT 10;'
+        arg = ()
+        thumb = ctx.guild.icon.url
+        title = ctx.guild.name
+
+    async with ctx.bot.conn.execute_fetchall(query, arg) as rows:
+        total = sum(r[1] for r in rows)
+        content = '\n'.join(f'{r[0]} ({r[1]})' for r in rows)
+    embed = discord.Embed(title=title, description=content)
+    embed.set_footer(text=f'Total {total}', icon_url=thumb)
 
     await ctx.send(embed=embed)
 
