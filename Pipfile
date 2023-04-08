@@ -4,14 +4,13 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-"discord.py" = "*"
-pillow = "*"
-pytz = "*"
-aiohttp = "*"
-aiosqlite = "*"
-alt-profanity-check = "*"
+"discord.py" = "~=2.2.2"
+pillow = "~=9.5.0"
+pytz = "~=2023.3"
+aiosqlite = "~=0.18.0"
+alt-profanity-check = "~=1.2.2"
 
 [dev-packages]
 
 [requires]
-python_version = "3.10"
+python_version = "3.11"
