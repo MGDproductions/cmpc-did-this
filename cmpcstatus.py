@@ -11,6 +11,7 @@ from typing import Optional
 import aiohttp
 import aiosqlite
 import discord
+import profanity_check
 import pytz
 from PIL import Image, ImageFont, ImageDraw
 from discord.ext import commands, tasks
@@ -90,10 +91,16 @@ intercept = [
 ]
 
 
+def profanity_predict(pwords: list[str]) -> list[bool]:
+    profanity_array = profanity_check.predict(pwords)
+    profanity_array = [bool(x) for x in profanity_array]
+    return profanity_array
+
+
 async def process_profanity(message: discord.Message):
     lower = message.content.casefold()
     mwords = lower.split()
-    profanity_array = profanity_check.predict(mwords)
+    profanity_array = profanity_predict(mwords)
 
     swears = []
     for i, word in enumerate(mwords):
@@ -148,7 +155,7 @@ async def on_member_remove(member):
 
 @bot.event
 async def on_message(message):
-    #await process_profanity(message)
+    await process_profanity(message)
 
     if message.author == bot.user:
         return
@@ -166,7 +173,7 @@ async def on_message(message):
 
     if message.content.startswith('random game'):
         async with bot.session as session:
-            async with session.get('http://store.steampowered.com/explore/random/') as r:
+            async with session.get('https://store.steampowered.com/explore/random/') as r:
                 shorten = str(r.url).replace('?snr=1_239_random_', '')
         await message.channel.send(shorten)
 
