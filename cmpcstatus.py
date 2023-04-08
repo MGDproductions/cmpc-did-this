@@ -11,11 +11,11 @@ from typing import Optional
 import aiohttp
 import aiosqlite
 import discord
-import profanity_check
 import pytz
-from PIL import Image, ImageFont, ImageDraw
+from better_profanity import profanity
 from discord.ext import commands, tasks
 from discord.utils import get
+from PIL import Image, ImageFont, ImageDraw
 
 
 with open("assets/common-words.txt") as f:
@@ -31,6 +31,13 @@ intents.messages = True
 fishgaming = True
 fishrestarting = True
 birthday = False
+
+
+intercept = [
+    ':3'
+]
+profanity.load_censor_words()
+profanity.add_censor_words(intercept)
 
 
 class CmpcDidThis(commands.Bot):
@@ -70,15 +77,16 @@ class CmpcDidThis(commands.Bot):
         await self.session.close()
 
 
-bot = CmpcDidThis(command_prefix=['cmpc.', 'Cmpc.', 'CMPC.'], intents=intents)
+# todo make better
+bot = CmpcDidThis(command_prefix=['c.', 'cmpc.', 'Cmpc.', 'CMPC.'], intents=intents)
 bot.remove_command('help')
 
 
-@bot.command()
+@bot.command(aliases=['lb'])
 async def leaderboard(ctx: commands.Context, person: Optional[discord.User] = None):
     # todo more functionality
     async with bot.conn.execute_fetchall(
-            'SELECT word, user FROM lb ORDER BY time DESC LIMIT :count ;', {'count': 10}
+            'SELECT word, user FROM lb ORDER BY time DESC LIMIT :count;', {'count': 10}
     ) as rows:
         if not rows:
             return await ctx.send('Nothing to report')
@@ -86,14 +94,9 @@ async def leaderboard(ctx: commands.Context, person: Optional[discord.User] = No
     await ctx.send(message)
 
 
-intercept = [
-    ':3'
-]
-
-
 def profanity_predict(pwords: list[str]) -> list[bool]:
-    profanity_array = profanity_check.predict(pwords)
-    profanity_array = [bool(x) for x in profanity_array]
+    # todo return iterable insead?
+    profanity_array = [profanity.contains_profanity(x) for x in pwords]
     return profanity_array
 
 
