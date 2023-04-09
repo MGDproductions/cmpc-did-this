@@ -20,8 +20,10 @@ from PIL import Image, ImageDraw, ImageFont
 
 from words import common_words
 
+PathLike = Union[str, Path]
 
-def load_config(fp: Union[str, Path] = 'config.json') -> dict:
+
+def load_config(fp: PathLike = 'config.json') -> dict:
     with open(fp) as file:
         return json.load(file)
 
@@ -32,6 +34,11 @@ intents.messages = True
 fishgaming = True
 fishrestarting = True
 birthday = False
+
+
+def author_is_mod(interaction) -> bool:
+    # mod role
+    return utils.get(interaction.author.roles, id=725356663850270821) is not None
 
 
 def profanity_predict(pwords: list[str]) -> list[bool]:
@@ -86,7 +93,7 @@ class CmpcDidThis(commands.Bot):
         await self.session.close()
 
     # lock bicking lawyer
-    @commands.command(aliases=['lbl'])
+    @commands.Bot.command(aliases=['lbl'])
     async def leaderblame(self, ctx: commands.Context, word: str):
         query = 'SELECT user, COUNT(*) AS num FROM lb WHERE word = ? GROUP BY user ORDER BY num DESC LIMIT 10;'
         arg = (word,)
@@ -101,7 +108,7 @@ class CmpcDidThis(commands.Bot):
 
         await ctx.send(embed=embed)
 
-    @commands.command(aliases=['lb'])
+    @commands.Bot.command(aliases=['lb'])
     async def leaderboard(self, ctx: commands.Context, person: Optional[Member]):
         # idk how this works but it sure does
         # or, in sql language:
@@ -146,7 +153,7 @@ class CmpcDidThis(commands.Bot):
         )
         await self.conn.commit()
 
-    @commands.event
+    @commands.Bot.event
     async def on_member_join(self, member):
         role = utils.get(member.guild.roles, id=932977796492427276)
         await member.add_roles(role)
@@ -172,13 +179,13 @@ class CmpcDidThis(commands.Bot):
             await channel.send(file=file, embed=embed)
             os.remove(savestring)
 
-    @discord.event
+    @commands.Bot.event
     async def on_member_remove(self, member):
         channel = self.get_channel(714154159590473801)
         sad_cat = '<:sad_cat:770191103310823426>'
         await channel.send(f"{sad_cat}*** {member.name} ***left the eggyboi family {sad_cat}")
 
-    @discord.event
+    @commands.Bot.event
     async def on_message(self, message):
         await self.process_profanity(message)
 
@@ -208,7 +215,7 @@ class CmpcDidThis(commands.Bot):
                 startnumber = splitmessage[2]
                 endnumber = splitmessage[3]
                 randomnumber = random.randint(int(startnumber), int(endnumber))
-                await message.channel.send(randomnumber)
+                await message.channel.send(str(randomnumber))
             except (IndexError, ValueError):
                 await message.channel.send("There is an error in your command.")
 
@@ -338,12 +345,8 @@ class CmpcDidThis(commands.Bot):
                 await message.edit(embed=embed6)
                 fishgaming = False
 
-    def author_is_mod(self, interaction) -> bool:
-        # mod role
-        return utils.get(interaction.author.roles, id=725356663850270821) is not None
-
-    @commands.command(hidden=True)
-    @commands.check(self.author_is_mod)
+    @commands.Bot.command(hidden=True)
+    @commands.check(author_is_mod)
     async def shutdown(self, ctx: commands.Context, restart: bool = True):
         # works with pterodactyl
         print('Received shutdown order')
