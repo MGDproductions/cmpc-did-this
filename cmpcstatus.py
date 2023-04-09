@@ -93,7 +93,7 @@ class CmpcDidThis(commands.Bot):
         await self.session.close()
 
     # lock bicking lawyer
-    @CmpcDidThis.command(aliases=['lbl'])
+    @commands.command(aliases=['lbl'])
     async def leaderblame(self, ctx: commands.Context, word: str):
         query = 'SELECT user, COUNT(*) AS num FROM lb WHERE word = ? GROUP BY user ORDER BY num DESC LIMIT 10;'
         arg = (word,)
@@ -108,7 +108,7 @@ class CmpcDidThis(commands.Bot):
 
         await ctx.send(embed=embed)
 
-    @CmpcDidThis.command(aliases=['lb'])
+    @commands.command(aliases=['lb'])
     async def leaderboard(self, ctx: commands.Context, person: Optional[Member]):
         # idk how this works but it sure does
         # or, in sql language:
@@ -152,8 +152,7 @@ class CmpcDidThis(commands.Bot):
             ((timestamp, user, word,) for word in swears),
         )
         await self.conn.commit()
-
-    @commands.Bot.event
+    
     async def on_member_join(self, member):
         role = utils.get(member.guild.roles, id=932977796492427276)
         await member.add_roles(role)
@@ -178,14 +177,12 @@ class CmpcDidThis(commands.Bot):
             await channel.send("<@" + str(member.id) + ">")
             await channel.send(file=file, embed=embed)
             os.remove(savestring)
-
-    @commands.Bot.event
+    
     async def on_member_remove(self, member):
         channel = self.get_channel(714154159590473801)
         sad_cat = '<:sad_cat:770191103310823426>'
         await channel.send(f"{sad_cat}*** {member.name} ***left the eggyboi family {sad_cat}")
-
-    @commands.Bot.event
+    
     async def on_message(self, message):
         await self.process_profanity(message)
 
@@ -345,7 +342,7 @@ class CmpcDidThis(commands.Bot):
                 await message.edit(embed=embed6)
                 fishgaming = False
 
-    @CmpcDidThis.command(hidden=True)
+    @commands.command(hidden=True)
     @commands.check(author_is_mod)
     async def shutdown(self, ctx: commands.Context, restart: bool = True):
         # works with pterodactyl
