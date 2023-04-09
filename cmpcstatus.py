@@ -46,9 +46,7 @@ def profanity_predict(pwords: list[str]) -> list[bool]:
     return profanity_array
 
 
-profanity_intercept = [
-    ':3'
-]
+profanity_intercept = [':3']
 # need to differ between slurs and normal profanity.
 # encrypt database entries?
 profanity.load_censor_words()
@@ -78,7 +76,10 @@ class CmpcDidThis(commands.Bot):
         if self.session is None:
             self.session = aiohttp.ClientSession()
         await self.change_presence(
-            activity=discord.Activity(type=discord.ActivityType.watching, name="the cmpc discord"))
+            activity=discord.Activity(
+                type=discord.ActivityType.watching, name='the cmpc discord'
+            )
+        )
         if self.config['clock'] and not self.clock.is_running():
             self.clock.start()
         if self.config['fishgamingwednesday'] and not self.fish.is_running():
@@ -102,7 +103,9 @@ class CmpcDidThis(commands.Bot):
         async with self.conn.execute_fetchall(query, arg) as rows:
             total = sum(r[1] for r in rows)
 
-        content = '\n'.join(f'{utils.get(ctx.guild.members, id=r[0]).mention} ({r[1]})' for r in rows)
+        content = '\n'.join(
+            f'{utils.get(ctx.guild.members, id=r[0]).mention} ({r[1]})' for r in rows
+        )
         embed = Embed(title=title, description=content)
         embed.set_footer(text=f'Total {total}', icon_url=thumb)
 
@@ -149,40 +152,61 @@ class CmpcDidThis(commands.Bot):
         user = message.author.id
         await self.conn.executemany(
             'INSERT INTO lb (time, user, word) VALUES (?, ?, ?);',
-            ((timestamp, user, word,) for word in swears),
+            (
+                (
+                    timestamp,
+                    user,
+                    word,
+                )
+                for word in swears
+            ),
         )
         await self.conn.commit()
-    
+
     async def on_member_join(self, member):
         role = utils.get(member.guild.roles, id=932977796492427276)
         await member.add_roles(role)
         if self.config['welcome']:
-            print(member.name + " joined")
+            print(member.name + ' joined')
             strip_width, strip_height = 471, 155
-            unwrapped = "Welcome! " + member.name
-            text = "\n".join(textwrap.wrap(unwrapped, width=19))
+            unwrapped = 'Welcome! ' + member.name
+            text = '\n'.join(textwrap.wrap(unwrapped, width=19))
             background = Image.open('assets/bg.png').convert('RGBA')
-            font = ImageFont.truetype("assets/Berlin Sans FB Demi Bold.ttf", 40)
+            font = ImageFont.truetype('assets/Berlin Sans FB Demi Bold.ttf', 40)
             draw = ImageDraw.Draw(background)
-            _left, _top, text_width, text_height = draw.textbbox((0, 0), text, font=font)
-            position = ((strip_width - text_width) / 2, (strip_height - text_height) / 2)
-            draw.text(position, text, color=(255, 255, 255), font=font, stroke_width=3, stroke_fill='black')
+            _left, _top, text_width, text_height = draw.textbbox(
+                (0, 0), text, font=font
+            )
+            position = (
+                (strip_width - text_width) / 2,
+                (strip_height - text_height) / 2,
+            )
+            draw.text(
+                position,
+                text,
+                color=(255, 255, 255),
+                font=font,
+                stroke_width=3,
+                stroke_fill='black',
+            )
             channel = self.get_channel(714154159590473801)
-            savestring = "cmpcwelcome" + str(random.randint(0, 100000)) + ".png"
+            savestring = 'cmpcwelcome' + str(random.randint(0, 100000)) + '.png'
             rgb_im = background.convert('RGB')
-            rgb_im.save(savestring, "PNG")
-            embed = Embed(title=member.name + " joined!", color=0xff0000)
+            rgb_im.save(savestring, 'PNG')
+            embed = Embed(title=member.name + ' joined!', color=0xFF0000)
             file = File(savestring, filename=savestring)
-            embed.set_image(url=("attachment://" + savestring))
-            await channel.send("<@" + str(member.id) + ">")
+            embed.set_image(url=('attachment://' + savestring))
+            await channel.send('<@' + str(member.id) + '>')
             await channel.send(file=file, embed=embed)
             os.remove(savestring)
-    
+
     async def on_member_remove(self, member):
         channel = self.get_channel(714154159590473801)
         sad_cat = '<:sad_cat:770191103310823426>'
-        await channel.send(f"{sad_cat}*** {member.name} ***left the eggyboi family {sad_cat}")
-    
+        await channel.send(
+            f'{sad_cat}*** {member.name} ***left the eggyboi family {sad_cat}'
+        )
+
     async def on_message(self, message):
         await self.process_profanity(message)
 
@@ -202,7 +226,9 @@ class CmpcDidThis(commands.Bot):
 
         if message.content.startswith('random game'):
             async with self.session as session:
-                async with session.get('https://store.steampowered.com/explore/random/') as r:
+                async with session.get(
+                    'https://store.steampowered.com/explore/random/'
+                ) as r:
                     shorten = str(r.url).replace('?snr=1_239_random_', '')
             await message.channel.send(shorten)
 
@@ -214,31 +240,42 @@ class CmpcDidThis(commands.Bot):
                 randomnumber = random.randint(int(startnumber), int(endnumber))
                 await message.channel.send(str(randomnumber))
             except (IndexError, ValueError):
-                await message.channel.send("There is an error in your command.")
+                await message.channel.send('There is an error in your command.')
 
         if message.content.startswith('cmpc.help'):
-            embed = Embed(title="cmpc did this commands", color=0x00ff00)
-            embed.add_field(name="random word", value="gives you a random word", inline=False)
-            embed.add_field(name="random game", value="gives you a random game", inline=False)
-            embed.add_field(name="random gif", value="gives you a random gif", inline=False)
-            embed.add_field(name="random capybara", value="gives you a random capybara", inline=False)
+            embed = Embed(title='cmpc did this commands', color=0x00FF00)
             embed.add_field(
-                name="random gif {search term}",
-                value="gives you a random gif that matches your search term example: random gif cat", inline=False
+                name='random word', value='gives you a random word', inline=False
+            )
+            embed.add_field(
+                name='random game', value='gives you a random game', inline=False
+            )
+            embed.add_field(
+                name='random gif', value='gives you a random gif', inline=False
+            )
+            embed.add_field(
+                name='random capybara',
+                value='gives you a random capybara',
+                inline=False,
+            )
+            embed.add_field(
+                name='random gif {search term}',
+                value='gives you a random gif that matches your search term example: random gif cat',
+                inline=False,
             )
             await message.channel.send(embed=embed)
 
-        if message.content.startswith("random capybara"):
+        if message.content.startswith('random capybara'):
             async with self.session as session:
-                async with session.get("https://api.capy.lol/v1/capybara") as response:
+                async with session.get('https://api.capy.lol/v1/capybara') as response:
                     img_bytes = BytesIO(await response.content.read())
-            embed = Embed(title="capybara for u!", color=0xff0000)
+            embed = Embed(title='capybara for u!', color=0xFF0000)
             filename = 'capybara.png'
             file = File(img_bytes, filename=filename)
-            embed.set_image(url=("attachment://" + filename))
+            embed.set_image(url=('attachment://' + filename))
             await message.channel.send(file=file, embed=embed)
 
-        if message.content.startswith("random gif"):
+        if message.content.startswith('random gif'):
             message_random = message.content
             split_random = message_random.split()
 
@@ -246,7 +283,7 @@ class CmpcDidThis(commands.Bot):
                 search_words = split_random[2:]
             else:
                 search_words = random.choice(common_words)
-            search_random = "https://api.tenor.com/v1/random?key={}&q={}&limit=1&media_filter=basic".format(
+            search_random = 'https://api.tenor.com/v1/random?key={}&q={}&limit=1&media_filter=basic'.format(
                 self.config['tenor_api_key'], search_words
             )
             async with self.session as session:
@@ -260,7 +297,11 @@ class CmpcDidThis(commands.Bot):
 
                             await message.channel.send(url)
                         except Exception as e:
-                            await message.channel.send("{} I couldn't find a gif!".format(message.author.mention))
+                            await message.channel.send(
+                                "{} I couldn't find a gif!".format(
+                                    message.author.mention
+                                )
+                            )
                             print(e)
 
         await self.process_commands(message)
@@ -269,12 +310,12 @@ class CmpcDidThis(commands.Bot):
     async def clock(self):
         amsterdam = pytz.timezone('Europe/Amsterdam')
         datetime_amsterdam = datetime.datetime.now(amsterdam)
-        ams_time = datetime_amsterdam.strftime("%H:%M")
+        ams_time = datetime_amsterdam.strftime('%H:%M')
         minute_check = datetime_amsterdam.minute
         if minute_check % 10 == 0:
-            print(f"time for cmpc:{ams_time}")
+            print(f'time for cmpc:{ams_time}')
             channel = self.get_channel(753467367966638100)
-            ctime = "cmpc: " + ams_time
+            ctime = 'cmpc: ' + ams_time
             await channel.edit(name=ctime)
 
     @tasks.loop(seconds=60)
@@ -292,12 +333,14 @@ class CmpcDidThis(commands.Bot):
                     send_messages=True,
                     create_public_threads=True,
                     create_private_threads=True,
-                    send_messages_in_threads=True
+                    send_messages_in_threads=True,
                 )
-                await channel.set_permissions(channel.guild.default_role, overwrite=perms)
-                await channel.send("<@&875359516131209256>")
+                await channel.set_permissions(
+                    channel.guild.default_role, overwrite=perms
+                )
+                await channel.send('<@&875359516131209256>')
                 fishgaming = True
-                print("fish gaming wednesday started")
+                print('fish gaming wednesday started')
                 await channel.send(file=File(r'fishgamingwednesday.mp4'))
             else:
                 fishgaming = True
@@ -305,10 +348,14 @@ class CmpcDidThis(commands.Bot):
             if fishgaming:
                 fishrestarting = False
 
-                embed = Embed(title="Fish gaming wednesday has ended.", color=0x69CCE7)
-                embed.set_image(url=("attachment://" + "fgwends.png"))
-                file = File("fgwends.png", filename="assets/fgwends.png")
-                embed.add_field(name="In 5 minutes this channel will be hidden.", value="** **", inline=False)
+                embed = Embed(title='Fish gaming wednesday has ended.', color=0x69CCE7)
+                embed.set_image(url=('attachment://' + 'fgwends.png'))
+                file = File('fgwends.png', filename='assets/fgwends.png')
+                embed.add_field(
+                    name='In 5 minutes this channel will be hidden.',
+                    value='** **',
+                    inline=False,
+                )
                 message = await channel.send(file=file, embed=embed)
 
                 # set channel to read-only, then wait five minutes
@@ -317,28 +364,32 @@ class CmpcDidThis(commands.Bot):
                     send_messages=False,
                     create_public_threads=False,
                     create_private_threads=False,
-                    send_messages_in_threads=False
+                    send_messages_in_threads=False,
                 )
-                await channel.set_permissions(channel.guild.default_role, overwrite=perms)
+                await channel.set_permissions(
+                    channel.guild.default_role, overwrite=perms
+                )
 
                 for i in range(4, 1, -1):
                     await asyncio.sleep(60)
-                    embed.fields[0].name = f"In {i} minutes this channel will be hidden."
+                    embed.fields[
+                        0
+                    ].name = f'In {i} minutes this channel will be hidden.'
                     await message.edit(embed=embed)
 
                 await asyncio.sleep(60)
-                embed.fields[0].name = "In 1 minute this channel will be hidden."
+                embed.fields[0].name = 'In 1 minute this channel will be hidden.'
                 await message.edit(embed=embed)
                 await asyncio.sleep(60)
 
                 # hide channel
                 perms = channel.overwrites_for(channel.guild.default_role)
-                perms.update(
-                    view_channel=False
+                perms.update(view_channel=False)
+                await channel.set_permissions(
+                    channel.guild.default_role, overwrite=perms
                 )
-                await channel.set_permissions(channel.guild.default_role, overwrite=perms)
-                embed6 = Embed(title="Fish gaming wednesday has ended.", color=0x69CCE7)
-                embed6.set_image(url=("attachment://" + "fgwends.png"))
+                embed6 = Embed(title='Fish gaming wednesday has ended.', color=0x69CCE7)
+                embed6.set_image(url=('attachment://' + 'fgwends.png'))
                 await message.edit(embed=embed6)
                 fishgaming = False
 
@@ -364,7 +415,7 @@ def main():
     # todo make better
     bot = CmpcDidThis(command_prefix=['c.', 'cmpc.', 'Cmpc.', 'CMPC.'], intents=intents)
     bot.remove_command('help')
-    print("Connecting to discord...")
+    print('Connecting to discord...')
     bot.run(bot.config['bot_token'])
 
 
