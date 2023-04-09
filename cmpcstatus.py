@@ -93,7 +93,7 @@ class CmpcDidThis(commands.Bot):
         await self.session.close()
 
     # lock bicking lawyer
-    @commands.Bot.command(aliases=['lbl'])
+    @CmpcDidThis.command(aliases=['lbl'])
     async def leaderblame(self, ctx: commands.Context, word: str):
         query = 'SELECT user, COUNT(*) AS num FROM lb WHERE word = ? GROUP BY user ORDER BY num DESC LIMIT 10;'
         arg = (word,)
@@ -108,7 +108,7 @@ class CmpcDidThis(commands.Bot):
 
         await ctx.send(embed=embed)
 
-    @commands.Bot.command(aliases=['lb'])
+    @CmpcDidThis.command(aliases=['lb'])
     async def leaderboard(self, ctx: commands.Context, person: Optional[Member]):
         # idk how this works but it sure does
         # or, in sql language:
@@ -345,7 +345,7 @@ class CmpcDidThis(commands.Bot):
                 await message.edit(embed=embed6)
                 fishgaming = False
 
-    @commands.Bot.command(hidden=True)
+    @CmpcDidThis.command(hidden=True)
     @commands.check(author_is_mod)
     async def shutdown(self, ctx: commands.Context, restart: bool = True):
         # works with pterodactyl
