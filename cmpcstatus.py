@@ -38,11 +38,13 @@ MEMBER_ROLE = 932977796492427276
 FISH_ROLE = 875359516131209256
 GENERAL_CHANNEL = 714154159590473801
 CLOCK_VOICE_CHANNEL = 753467367966638100
+GREEN = discord.Color.green()
+RED = discord.Color.red()
 SAD_CAT_EMOJI = discord.PartialEmoji.from_str('<:sad_cat:770191103310823426>')
 
 # order is very important
 # longest ones first
-COMMAND_PREFIX = ['$', 'cmpc.', 'c.', 'random', ]
+COMMAND_PREFIX = ['random ', 'cmpc.', 'c.', '$', ]  # space is needed
 
 PathLike = Union[str, Path]
 
@@ -187,7 +189,7 @@ class CmpcDidThis(commands.Bot):
             savestring = 'cmpcwelcome' + str(random.randint(0, 100000)) + '.png'
             rgb_im = background.convert('RGB')
             rgb_im.save(savestring, 'PNG')
-            embed = Embed(title=member.name + ' joined!', color=0xFF0000)
+            embed = Embed(title=member.name + ' joined!', color=RED)
             file = File(savestring, filename=savestring)
             embed.set_image(url=('attachment://' + savestring))
             await channel.send('<@' + str(member.id) + '>')
@@ -204,7 +206,7 @@ class CmpcDidThis(commands.Bot):
         await self.process_profanity(message)
 
         if message.content.startswith('cmpc.help'):
-            embed = Embed(title='cmpc did this commands', color=0x00FF00)
+            embed = Embed(title='cmpc did this commands', color=GREEN)
             embed.add_field(
                 name='random word', value='gives you a random word', inline=False
             )
@@ -322,11 +324,11 @@ def command_prefix(bot_, interaction) -> list[str]:
     # lots of things do
     prefices = COMMAND_PREFIX + commands.when_mentioned(bot_, interaction)
     longest_prefix = max(len(p) for p in prefices)
-    start = interaction.content[:longest_prefix * 4]
+    start = interaction.content[:longest_prefix]
     possible = start.casefold()
     for prefix in prefices:
         if possible.startswith(prefix):
-            return [prefix]
+            return [start[:len(prefix)]]
     prefix = [prefices[0]]
     return prefix
 
@@ -354,8 +356,8 @@ async def testconn(ctx: Context):
 async def random_game(ctx: Context):
     async with ctx.bot.session.get(
             'https://store.steampowered.com/explore/random/'
-    ) as r:
-        shorten = str(r.url).replace('?snr=1_239_random_', '')
+    ) as response:
+        shorten = str(response.url).removesuffix('?snr=1_239_random_')
     await ctx.send(shorten)
 
 
@@ -369,7 +371,7 @@ async def random_number(ctx: Context, startnumber: Optional[int], endnumber: Opt
 async def capybara(ctx: Context):
     async with ctx.bot.session.get('https://api.capy.lol/v1/capybara') as response:
         img_bytes = BytesIO(await response.content.read())
-    embed = Embed(title='capybara for u!', color=discord.Color.red())
+    embed = Embed(title='capybara for u!', color=RED)
     filename = 'capybara.png'
     file = File(img_bytes, filename=filename)
     embed.set_image(url=('attachment://' + filename))
