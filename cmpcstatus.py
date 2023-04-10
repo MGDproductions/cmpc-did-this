@@ -90,33 +90,32 @@ class CmpcDidThis(commands.Bot):
         self.session: Optional[aiohttp.ClientSession] = None
         super().__init__(*args, **kwargs)
 
+    async def setup_hook(self):
+        print('Connecting to discord...')
+        self.conn = await aiosqlite.connect('db.sqlite3')
+        await self.conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS lb (
+                time INTEGER NOT NULL,
+                user INTEGER NOT NULL,
+                word TEXT NOT NULL
+            );
+            """
+        )
+        await self.conn.commit()
+
+        self.session = aiohttp.ClientSession()
+        if CLOCK:
+            self.clock.start()
+        if FISHGAMINGWEDNESDAY:
+            self.fish.start()
+
     async def on_ready(self):
-        print(self.commands)
-        # todo fail on error?
-        if self.conn is None:
-            self.conn = await aiosqlite.connect('db.sqlite3')
-            await self.conn.execute(
-                """
-                CREATE TABLE IF NOT EXISTS lb (
-                    time INTEGER NOT NULL,
-                    user INTEGER NOT NULL,
-                    word TEXT NOT NULL
-                );
-                """
-            )
-            await self.conn.commit()
-        if self.session is None:
-            self.session = aiohttp.ClientSession()
         await self.change_presence(
             activity=discord.Activity(
                 type=discord.ActivityType.watching, name='the cmpc discord'
             )
         )
-        if CLOCK and not self.clock.is_running():
-            self.clock.start()
-        if FISHGAMINGWEDNESDAY and not self.fish.is_running():
-            self.fish.start()
-
         print(f'Connected to discord as: {self.user}')
         print('done')  # this line is needed to work with ptero
 
@@ -126,6 +125,9 @@ class CmpcDidThis(commands.Bot):
         for closeable in (self.conn, self.session):
             if closeable is not None:
                 await closeable.close()
+        for task in (self.clock, self.fish):
+            if task.is_running():
+                task.stop()
 
     async def process_profanity(self, message: Message):
         lower = message.content.casefold()
@@ -319,7 +321,7 @@ def command_prefix(bot_, interaction) -> list[str]:
     # needs fixing upstream
     # lots of things do
     prefices = COMMAND_PREFIX + commands.when_mentioned(bot_, interaction)
-    longest_prefix = max(len(p) for p in COMMAND_PREFIX)
+    longest_prefix = max(len(p) for p in prefices)
     start = interaction.content[:longest_prefix * 4]
     possible = start.casefold()
     for prefix in prefices:
@@ -349,12 +351,11 @@ async def testconn(ctx: Context):
 
 
 @bot.command(name='game')
-async def random_game(self, ctx: Context):
-    async with self.session as session:
-        async with session.get(
-                'https://store.steampowered.com/explore/random/'
-        ) as r:
-            shorten = str(r.url).replace('?snr=1_239_random_', '')
+async def random_game(ctx: Context):
+    async with ctx.bot.session.get(
+            'https://store.steampowered.com/explore/random/'
+    ) as r:
+        shorten = str(r.url).replace('?snr=1_239_random_', '')
     await ctx.send(shorten)
 
 
@@ -364,45 +365,46 @@ async def random_number(ctx: Context, startnumber: Optional[int], endnumber: Opt
     await ctx.send(f'{randomnumber}')
 
 
-@bot.command(name='capybara', aliases='capy')
+@bot.command(name='capybara', aliases=('capy',))
 async def capybara(ctx: Context):
-    async with ctx.bot.session as session:
-        async with session.get('https://api.capy.lol/v1/capybara') as response:
-            img_bytes = BytesIO(await response.content.read())
-    embed = Embed(title='capybara for u!', color=0xFF0000)
+    async with ctx.bot.session.get('https://api.capy.lol/v1/capybara') as response:
+        img_bytes = BytesIO(await response.content.read())
+    embed = Embed(title='capybara for u!', color=discord.Color.red())
     filename = 'capybara.png'
     file = File(img_bytes, filename=filename)
     embed.set_image(url=('attachment://' + filename))
     await ctx.send(file=file, embed=embed)
 
 
-@bot.command(name='gif', aliases='g')
+@bot.command(name='gif', aliases=('g',))
 async def random_gif(ctx: Context, *, search: Optional[str]):
-    search = quote_plus(search)
+    if search is None:
+        search = random.choice(common_words)
+    search = quote_plus(search.encode(encoding='utf-8'))
 
-    # todo v2
-    search_random = 'https://api.tenor.com/v1/random?key={}&q={}&limit=1&media_filter=basic'.format(
+    # https://developers.google.com/tenor/guides/endpoints
+    # I love the new Google State!
+    search_random = 'https://tenor.googleapis.com/v2/search?key={}&q={}&random=true&limit=1'.format(
         ctx.bot.config['tenor_token'], search
     )
-    async with ctx.bot.session as session:
-        async with session.get(search_random) as random_request:
-            if random_request.ok:
-                random_json = await random_request.json()
-                results = random_json['results']
-                gif = results[0]
-                url = gif['url']
+    async with ctx.bot.session.get(search_random) as request:
+        request.raise_for_status()
+        random_json = await request.json()
+    results = random_json['results']
+    gif = results[0]
+    url = gif['url']
 
-                await ctx.send(url)
+    await ctx.send(url)
 
 
 # lock bicking lawyer
-@bot.command(aliases=['lbl'])
-async def leaderblame(self, ctx: commands.Context, word: str):
+@bot.command(aliases=('lbl',))
+async def leaderblame(ctx: commands.Context, word: str):
     query = 'SELECT user, COUNT(*) AS num FROM lb WHERE word = ? GROUP BY user ORDER BY num DESC LIMIT 10;'
     arg = (word,)
     thumb = None
     title = word
-    async with self.conn.execute_fetchall(query, arg) as rows:
+    async with ctx.bot.conn.execute_fetchall(query, arg) as rows:
         total = sum(r[1] for r in rows)
 
     content = '\n'.join(
@@ -414,8 +416,8 @@ async def leaderblame(self, ctx: commands.Context, word: str):
     await ctx.send(embed=embed)
 
 
-@bot.command(aliases=['lb'])
-async def leaderboard(self, ctx: commands.Context, person: Optional[Member]):
+@bot.command(aliases=('lb',))
+async def leaderboard(ctx: commands.Context, person: Optional[Member]):
     # idk how this works but it sure does
     # or, in sql language:
     # IDK HOW this, WORKS BUT (it) SURE DOES
@@ -430,7 +432,7 @@ async def leaderboard(self, ctx: commands.Context, person: Optional[Member]):
         thumb = ctx.guild.icon.url
         title = ctx.guild.name
 
-    async with self.conn.execute_fetchall(query, arg) as rows:
+    async with ctx.bot.conn.execute_fetchall(query, arg) as rows:
         total = sum(r[1] for r in rows)
         content = '\n'.join(f'{r[0]} ({r[1]})' for r in rows)
     embed = Embed(title=title, description=content)
@@ -441,7 +443,7 @@ async def leaderboard(self, ctx: commands.Context, person: Optional[Member]):
 
 @bot.command(hidden=True)
 @commands.has_role(MOD_ROLE)
-async def shutdown(self, ctx: commands.Context, restart: bool = True):
+async def shutdown(ctx: commands.Context, restart: bool = True):
     # works with pterodactyl
     # todo file thingy# everytihings going to start working soon
     print('Received shutdown order')
@@ -449,7 +451,7 @@ async def shutdown(self, ctx: commands.Context, restart: bool = True):
         message = 'Restarting'
         exit_code = 7
     else:
-        if not await self.is_owner(ctx.author):
+        if not await ctx.bot.is_owner(ctx.author):
             print('No')
             return
         message = 'Shutting down'
@@ -459,7 +461,6 @@ async def shutdown(self, ctx: commands.Context, restart: bool = True):
 
 
 def main():
-    print('Connecting to discord...')
     bot.run(bot.config['discord_token'])
 
 
