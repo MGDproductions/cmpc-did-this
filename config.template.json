@@ -1,8 +1,8 @@
 {
-  "tenor_api_key" : "",
-  "bot_token" : "",
+  "discord_token" : "",
+  "tenor_token" : "",
+
   "clock" : false,
   "welcome" : false,
-  "fishgamingwednesday" : false,
-  "birthday": false
+  "fgw" : false
 }

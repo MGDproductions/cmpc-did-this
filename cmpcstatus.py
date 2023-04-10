@@ -18,22 +18,35 @@ from discord import Embed, File, Member, Message, utils
 from discord.ext import commands, tasks
 from PIL import Image, ImageDraw, ImageFont
 
-from words import common_words
+from assets.words import common_words
+
 
 PathLike = Union[str, Path]
 
 
+def config_object_hook(obj: dict, fp: PathLike = 'config.template.json') -> dict:
+    with open(fp) as file:
+        template: dict = json.load(file)
+    if not isinstance(template, dict):
+        raise TypeError(f'template: Expected dict, got {type(template)}')
+    # todo more efficient?
+    for key in obj.keys():
+        if key not in template:
+            raise ValueError(f'Unexpected key: {key}')
+    for key in template.keys():
+        if key not in obj:
+            raise ValueError(f'Missing key: {key}')
+    return obj
+
+
 def load_config(fp: PathLike = 'config.json') -> dict:
     with open(fp) as file:
-        return json.load(file)
+        return json.load(file, object_hook=config_object_hook)
 
 
-intents = discord.Intents.all()
-intents.members = True
-intents.messages = True
+# todo remove
 fishgaming = True
 fishrestarting = True
-birthday = False
 
 
 def author_is_mod(interaction) -> bool:
@@ -46,6 +59,7 @@ def profanity_predict(pwords: list[str]) -> list[bool]:
     return profanity_array
 
 
+# todo make object
 profanity_intercept = [':3']
 # need to differ between slurs and normal profanity.
 # encrypt database entries?
@@ -61,6 +75,8 @@ class CmpcDidThis(commands.Bot):
         super().__init__(*args, **kwargs)
 
     async def on_ready(self):
+        self.config = load_config()
+
         if self.conn is None:
             self.conn = await aiosqlite.connect('db.sqlite3')
             await self.conn.execute(
@@ -82,7 +98,7 @@ class CmpcDidThis(commands.Bot):
         )
         if self.config['clock'] and not self.clock.is_running():
             self.clock.start()
-        if self.config['fishgamingwednesday'] and not self.fish.is_running():
+        if self.config['fgw'] and not self.fish.is_running():
             self.fish.start()
 
         print(f'Connected to discord as: {self.user}')
@@ -90,8 +106,10 @@ class CmpcDidThis(commands.Bot):
 
     async def close(self):
         await super().close()
-        await self.conn.close()
-        await self.session.close()
+        # todo typing
+        for closeable in (self.conn, self.session):
+            if closeable is not None:
+                await closeable.close()
 
     # lock bicking lawyer
     @commands.command(aliases=['lbl'])
@@ -284,7 +302,7 @@ class CmpcDidThis(commands.Bot):
             else:
                 search_words = random.choice(common_words)
             search_random = 'https://api.tenor.com/v1/random?key={}&q={}&limit=1&media_filter=basic'.format(
-                self.config['tenor_api_key'], search_words
+                self.config['tenor_token'], search_words
             )
             async with self.session as session:
                 async with session.get(search_random) as random_request:
@@ -412,11 +430,14 @@ class CmpcDidThis(commands.Bot):
 
 
 def main():
+    intents = discord.Intents.default()
+    intents.members = True
+    intents.message_content = True
     # todo make better
     bot = CmpcDidThis(command_prefix=['c.', 'cmpc.', 'Cmpc.', 'CMPC.'], intents=intents)
     bot.remove_command('help')
     print('Connecting to discord...')
-    bot.run(bot.config['bot_token'])
+    bot.run(bot.config['discord_token'])
 
 
 if __name__ == '__main__':
