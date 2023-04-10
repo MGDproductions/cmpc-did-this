@@ -1,8 +1,4 @@
 {
   "discord_token" : "",
-  "tenor_token" : "",
-
-  "clock" : false,
-  "welcome" : false,
-  "fgw" : false
+  "tenor_token" : ""
 }

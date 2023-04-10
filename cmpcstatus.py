@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import asyncio
 import datetime
 import json
@@ -16,10 +18,28 @@ import pytz
 from better_profanity import profanity
 from discord import Embed, File, Member, Message, utils
 from discord.ext import commands, tasks
+from discord.ext.commands import Context
 from PIL import Image, ImageDraw, ImageFont
 
 from assets.words import common_words
 
+
+# config
+BIRTHDAY = False
+CLOCK = True
+FISHGAMINGWEDNESDAY = True
+WELCOME = True
+FISH_TEXT_CHANNEL = 875297517351358474
+MOD_ROLE = 725356663850270821
+MEMBER_ROLE = 932977796492427276
+FISH_ROLE = 875359516131209256
+GENERAL_CHANNEL = 714154159590473801
+CLOCK_VOICE_CHANNEL = 753467367966638100
+SAD_CAT_EMOJI = discord.PartialEmoji.from_str('<:sad_cat:770191103310823426>')
+
+# order is very important
+# longest ones first
+COMMAND_PREFIX = ['$', 'cmpc.', 'c.', 'random',]
 
 PathLike = Union[str, Path]
 
@@ -51,12 +71,15 @@ fishrestarting = True
 
 def author_is_mod(interaction) -> bool:
     # mod role
-    return utils.get(interaction.author.roles, id=725356663850270821) is not None
+    return utils.get(interaction.author.roles, id=MOD_ROLE) is not None
 
 
 def profanity_predict(pwords: list[str]) -> list[bool]:
     profanity_array = [profanity.contains_profanity(x) for x in pwords]
     return profanity_array
+
+
+
 
 
 # todo make object
@@ -75,8 +98,8 @@ class CmpcDidThis(commands.Bot):
         super().__init__(*args, **kwargs)
 
     async def on_ready(self):
-        self.config = load_config()
-
+        print(self.commands)
+        # todo fail on error?
         if self.conn is None:
             self.conn = await aiosqlite.connect('db.sqlite3')
             await self.conn.execute(
@@ -96,9 +119,9 @@ class CmpcDidThis(commands.Bot):
                 type=discord.ActivityType.watching, name='the cmpc discord'
             )
         )
-        if self.config['clock'] and not self.clock.is_running():
+        if CLOCK and not self.clock.is_running():
             self.clock.start()
-        if self.config['fgw'] and not self.fish.is_running():
+        if FISHGAMINGWEDNESDAY and not self.fish.is_running():
             self.fish.start()
 
         print(f'Connected to discord as: {self.user}')
@@ -182,7 +205,7 @@ class CmpcDidThis(commands.Bot):
         await self.conn.commit()
 
     async def on_member_join(self, member):
-        role = utils.get(member.guild.roles, id=932977796492427276)
+        role = utils.get(member.guild.roles, id=MEMBER_ROLE)
         await member.add_roles(role)
         if self.config['welcome']:
             print(member.name + ' joined')
@@ -207,7 +230,7 @@ class CmpcDidThis(commands.Bot):
                 stroke_width=3,
                 stroke_fill='black',
             )
-            channel = self.get_channel(714154159590473801)
+            channel = self.get_channel(GENERAL_CHANNEL)
             savestring = 'cmpcwelcome' + str(random.randint(0, 100000)) + '.png'
             rgb_im = background.convert('RGB')
             rgb_im.save(savestring, 'PNG')
@@ -219,36 +242,43 @@ class CmpcDidThis(commands.Bot):
             os.remove(savestring)
 
     async def on_member_remove(self, member):
-        channel = self.get_channel(714154159590473801)
-        sad_cat = '<:sad_cat:770191103310823426>'
+        channel = self.get_channel(GENERAL_CHANNEL)
         await channel.send(
-            f'{sad_cat}*** {member.name} ***left the eggyboi family {sad_cat}'
+            f'{SAD_CAT_EMOJI}*** {member.name} ***left the eggyboi family {SAD_CAT_EMOJI}'
         )
 
-    async def on_message(self, message):
+    @commands.command()
+    async def word(self, ctx: Context):
+        return await ctx.send(random.choice(common_words))
+
+    @commands.command()
+    @commands.is_owner()  # should be doable without parens...
+    async def say(self, ctx: Context, *, text: str):
+        return await ctx.send(text)
+
+    @commands.command()
+    async def testconn(self, ctx: Context):
+        return await ctx.send('hi there dude!')
+
+    @commands.command()
+    async def game(self, ctx: Context):
+        async with self.session as session:
+            async with session.get(
+                    'https://store.steampowered.com/explore/random/'
+            ) as r:
+                shorten = str(r.url).replace('?snr=1_239_random_', '')
+        await ctx.send(shorten)
+
+    @commands.command
+    async def number(self, ctx: Context, startnumber: Optional[int], endnumber: Optional[int]):
+        randomnumber = random.randint(startnumber, endnumber)
+        await ctx.send(f'{randomnumber}')
+
+    async def on_message(self, message: Message):
         await self.process_profanity(message)
 
         if message.author == self.user:
             return
-
-        if message.content.startswith('random word'):
-            word = random.choice(common_words)
-            await message.channel.send(word)
-
-        if message.content.startswith('cmpc.say'):
-            if message.author.id == 416525692772286464:
-                await message.channel.send(message.content[9:])
-
-        if message.content.startswith('$testconn'):
-            await message.channel.send('hi there dude!')
-
-        if message.content.startswith('random game'):
-            async with self.session as session:
-                async with session.get(
-                    'https://store.steampowered.com/explore/random/'
-                ) as r:
-                    shorten = str(r.url).replace('?snr=1_239_random_', '')
-            await message.channel.send(shorten)
 
         if message.content.startswith('random number'):
             try:
@@ -332,7 +362,7 @@ class CmpcDidThis(commands.Bot):
         minute_check = datetime_amsterdam.minute
         if minute_check % 10 == 0:
             print(f'time for cmpc:{ams_time}')
-            channel = self.get_channel(753467367966638100)
+            channel = self.get_channel(CLOCK_VOICE_CHANNEL)
             ctime = 'cmpc: ' + ams_time
             await channel.edit(name=ctime)
 
@@ -342,7 +372,7 @@ class CmpcDidThis(commands.Bot):
         global fishrestarting
         datetime_gmt = datetime.datetime.now()
         weekday = datetime_gmt.isoweekday()
-        channel = self.get_channel(875297517351358474)
+        channel = self.get_channel(FISH_TEXT_CHANNEL)
         if weekday == 3:
             if fishrestarting and not fishgaming:
                 perms = channel.overwrites_for(channel.guild.default_role)
@@ -356,7 +386,7 @@ class CmpcDidThis(commands.Bot):
                 await channel.set_permissions(
                     channel.guild.default_role, overwrite=perms
                 )
-                await channel.send('<@&875359516131209256>')
+                await channel.send(f'<@&{FISH_ROLE}>')
                 fishgaming = True
                 print('fish gaming wednesday started')
                 await channel.send(file=File(r'fishgamingwednesday.mp4'))
@@ -415,6 +445,7 @@ class CmpcDidThis(commands.Bot):
     @commands.check(author_is_mod)
     async def shutdown(self, ctx: commands.Context, restart: bool = True):
         # works with pterodactyl
+        # todo file thingy# everytihings going to start working soon
         print('Received shutdown order')
         if restart:
             message = 'Restarting'
@@ -429,13 +460,28 @@ class CmpcDidThis(commands.Bot):
         sys.exit(exit_code)
 
 
+# todo typing
+def command_prefix(bot, interaction) -> list[str]:
+    # needs fixing upstream
+    # lots of things do
+    prefices = COMMAND_PREFIX + commands.when_mentioned(bot, interaction)
+    longest_prefix = max(len(p) for p in COMMAND_PREFIX)
+    start = interaction.content[:longest_prefix * 4]
+    possible = start.casefold()
+    for prefix in prefices:
+        if possible.startswith(prefix):
+            return [prefix]
+    prefix = [prefices[0]]
+    print(prefix)
+    return prefix
+
+
 def main():
     intents = discord.Intents.default()
     intents.members = True
     intents.message_content = True
     # todo make better
-    bot = CmpcDidThis(command_prefix=['c.', 'cmpc.', 'Cmpc.', 'CMPC.'], intents=intents)
-    bot.remove_command('help')
+    bot = CmpcDidThis(command_prefix='test', intents=intents, help_command=None)
     print('Connecting to discord...')
     bot.run(bot.config['discord_token'])
 
