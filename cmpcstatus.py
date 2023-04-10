@@ -8,6 +8,7 @@ import random
 import sys
 import textwrap
 from io import BytesIO
+from urllib.parse import quote_plus
 from typing import Optional, Union
 from pathlib import Path
 
@@ -23,8 +24,10 @@ from PIL import Image, ImageDraw, ImageFont
 
 from assets.words import common_words
 
-
 # config
+INTENTS = discord.Intents.default()
+INTENTS.members = True
+INTENTS.message_content = True
 BIRTHDAY = False
 CLOCK = True
 FISHGAMINGWEDNESDAY = True
@@ -39,7 +42,7 @@ SAD_CAT_EMOJI = discord.PartialEmoji.from_str('<:sad_cat:770191103310823426>')
 
 # order is very important
 # longest ones first
-COMMAND_PREFIX = ['$', 'cmpc.', 'c.', 'random',]
+COMMAND_PREFIX = ['$', 'cmpc.', 'c.', 'random', ]
 
 PathLike = Union[str, Path]
 
@@ -68,26 +71,16 @@ def load_config(fp: PathLike = 'config.json') -> dict:
 fishgaming = True
 fishrestarting = True
 
-
-def author_is_mod(interaction) -> bool:
-    # mod role
-    return utils.get(interaction.author.roles, id=MOD_ROLE) is not None
-
-
-def profanity_predict(pwords: list[str]) -> list[bool]:
-    profanity_array = [profanity.contains_profanity(x) for x in pwords]
-    return profanity_array
-
-
-
-
-
-# todo make object
 profanity_intercept = [':3']
 # need to differ between slurs and normal profanity.
 # encrypt database entries?
 profanity.load_censor_words()
 profanity.add_censor_words(profanity_intercept)
+
+
+def profanity_predict(pwords: list[str]) -> list[bool]:
+    profanity_array = [profanity.contains_profanity(x) for x in pwords]
+    return profanity_array
 
 
 class CmpcDidThis(commands.Bot):
@@ -133,48 +126,6 @@ class CmpcDidThis(commands.Bot):
         for closeable in (self.conn, self.session):
             if closeable is not None:
                 await closeable.close()
-
-    # lock bicking lawyer
-    @commands.command(aliases=['lbl'])
-    async def leaderblame(self, ctx: commands.Context, word: str):
-        query = 'SELECT user, COUNT(*) AS num FROM lb WHERE word = ? GROUP BY user ORDER BY num DESC LIMIT 10;'
-        arg = (word,)
-        thumb = None
-        title = word
-        async with self.conn.execute_fetchall(query, arg) as rows:
-            total = sum(r[1] for r in rows)
-
-        content = '\n'.join(
-            f'{utils.get(ctx.guild.members, id=r[0]).mention} ({r[1]})' for r in rows
-        )
-        embed = Embed(title=title, description=content)
-        embed.set_footer(text=f'Total {total}', icon_url=thumb)
-
-        await ctx.send(embed=embed)
-
-    @commands.command(aliases=['lb'])
-    async def leaderboard(self, ctx: commands.Context, person: Optional[Member]):
-        # idk how this works but it sure does
-        # or, in sql language:
-        # IDK HOW this, WORKS BUT (it) SURE DOES
-        if person is not None:
-            query = 'SELECT word, COUNT(*) AS num FROM lb WHERE user = ? GROUP BY word ORDER BY num DESC LIMIT 10;'
-            arg = (person.id,)
-            thumb = person.avatar.url
-            title = person.name
-        else:
-            query = 'SELECT word, COUNT(*) AS num FROM lb GROUP BY word ORDER BY num DESC LIMIT 10;'
-            arg = ()
-            thumb = ctx.guild.icon.url
-            title = ctx.guild.name
-
-        async with self.conn.execute_fetchall(query, arg) as rows:
-            total = sum(r[1] for r in rows)
-            content = '\n'.join(f'{r[0]} ({r[1]})' for r in rows)
-        embed = Embed(title=title, description=content)
-        embed.set_footer(text=f'Total {total}', icon_url=thumb)
-
-        await ctx.send(embed=embed)
 
     async def process_profanity(self, message: Message):
         lower = message.content.casefold()
@@ -247,48 +198,8 @@ class CmpcDidThis(commands.Bot):
             f'{SAD_CAT_EMOJI}*** {member.name} ***left the eggyboi family {SAD_CAT_EMOJI}'
         )
 
-    @commands.command()
-    async def word(self, ctx: Context):
-        return await ctx.send(random.choice(common_words))
-
-    @commands.command()
-    @commands.is_owner()  # should be doable without parens...
-    async def say(self, ctx: Context, *, text: str):
-        return await ctx.send(text)
-
-    @commands.command()
-    async def testconn(self, ctx: Context):
-        return await ctx.send('hi there dude!')
-
-    @commands.command()
-    async def game(self, ctx: Context):
-        async with self.session as session:
-            async with session.get(
-                    'https://store.steampowered.com/explore/random/'
-            ) as r:
-                shorten = str(r.url).replace('?snr=1_239_random_', '')
-        await ctx.send(shorten)
-
-    @commands.command
-    async def number(self, ctx: Context, startnumber: Optional[int], endnumber: Optional[int]):
-        randomnumber = random.randint(startnumber, endnumber)
-        await ctx.send(f'{randomnumber}')
-
     async def on_message(self, message: Message):
         await self.process_profanity(message)
-
-        if message.author == self.user:
-            return
-
-        if message.content.startswith('random number'):
-            try:
-                splitmessage = message.content.split()
-                startnumber = splitmessage[2]
-                endnumber = splitmessage[3]
-                randomnumber = random.randint(int(startnumber), int(endnumber))
-                await message.channel.send(str(randomnumber))
-            except (IndexError, ValueError):
-                await message.channel.send('There is an error in your command.')
 
         if message.content.startswith('cmpc.help'):
             embed = Embed(title='cmpc did this commands', color=0x00FF00)
@@ -312,45 +223,6 @@ class CmpcDidThis(commands.Bot):
                 inline=False,
             )
             await message.channel.send(embed=embed)
-
-        if message.content.startswith('random capybara'):
-            async with self.session as session:
-                async with session.get('https://api.capy.lol/v1/capybara') as response:
-                    img_bytes = BytesIO(await response.content.read())
-            embed = Embed(title='capybara for u!', color=0xFF0000)
-            filename = 'capybara.png'
-            file = File(img_bytes, filename=filename)
-            embed.set_image(url=('attachment://' + filename))
-            await message.channel.send(file=file, embed=embed)
-
-        if message.content.startswith('random gif'):
-            message_random = message.content
-            split_random = message_random.split()
-
-            if len(split_random) > 2:
-                search_words = split_random[2:]
-            else:
-                search_words = random.choice(common_words)
-            search_random = 'https://api.tenor.com/v1/random?key={}&q={}&limit=1&media_filter=basic'.format(
-                self.config['tenor_token'], search_words
-            )
-            async with self.session as session:
-                async with session.get(search_random) as random_request:
-                    if random_request.ok:
-                        try:
-                            random_json = await random_request.json()
-                            results = random_json['results']
-                            gif = results[0]
-                            url = gif['url']
-
-                            await message.channel.send(url)
-                        except Exception as e:
-                            await message.channel.send(
-                                "{} I couldn't find a gif!".format(
-                                    message.author.mention
-                                )
-                            )
-                            print(e)
 
         await self.process_commands(message)
 
@@ -441,30 +313,12 @@ class CmpcDidThis(commands.Bot):
                 await message.edit(embed=embed6)
                 fishgaming = False
 
-    @commands.command(hidden=True)
-    @commands.check(author_is_mod)
-    async def shutdown(self, ctx: commands.Context, restart: bool = True):
-        # works with pterodactyl
-        # todo file thingy# everytihings going to start working soon
-        print('Received shutdown order')
-        if restart:
-            message = 'Restarting'
-            exit_code = 7
-        else:
-            if not await self.is_owner(ctx.author):
-                print('No')
-                return
-            message = 'Shutting down'
-            exit_code = 0
-        await ctx.send(message)
-        sys.exit(exit_code)
-
 
 # todo typing
-def command_prefix(bot, interaction) -> list[str]:
+def command_prefix(bot_, interaction) -> list[str]:
     # needs fixing upstream
     # lots of things do
-    prefices = COMMAND_PREFIX + commands.when_mentioned(bot, interaction)
+    prefices = COMMAND_PREFIX + commands.when_mentioned(bot_, interaction)
     longest_prefix = max(len(p) for p in COMMAND_PREFIX)
     start = interaction.content[:longest_prefix * 4]
     possible = start.casefold()
@@ -472,16 +326,139 @@ def command_prefix(bot, interaction) -> list[str]:
         if possible.startswith(prefix):
             return [prefix]
     prefix = [prefices[0]]
-    print(prefix)
     return prefix
 
 
+bot = CmpcDidThis(command_prefix=command_prefix, intents=INTENTS, help_command=None)
+
+
+@bot.command(name='word')
+async def random_word(ctx: Context):
+    return await ctx.send(random.choice(common_words))
+
+
+@bot.command()
+@commands.is_owner()  # should be doable without parens...
+async def say(ctx: Context, *, text: str):
+    return await ctx.send(text)
+
+
+@bot.command()
+async def testconn(ctx: Context):
+    return await ctx.send('hi there dude!')
+
+
+@bot.command(name='game')
+async def random_game(self, ctx: Context):
+    async with self.session as session:
+        async with session.get(
+                'https://store.steampowered.com/explore/random/'
+        ) as r:
+            shorten = str(r.url).replace('?snr=1_239_random_', '')
+    await ctx.send(shorten)
+
+
+@bot.command(name='number')
+async def random_number(ctx: Context, startnumber: Optional[int], endnumber: Optional[int]):
+    randomnumber = random.randint(startnumber, endnumber)
+    await ctx.send(f'{randomnumber}')
+
+
+@bot.command(name='capybara', aliases='capy')
+async def capybara(ctx: Context):
+    async with ctx.bot.session as session:
+        async with session.get('https://api.capy.lol/v1/capybara') as response:
+            img_bytes = BytesIO(await response.content.read())
+    embed = Embed(title='capybara for u!', color=0xFF0000)
+    filename = 'capybara.png'
+    file = File(img_bytes, filename=filename)
+    embed.set_image(url=('attachment://' + filename))
+    await ctx.send(file=file, embed=embed)
+
+
+@bot.command(name='gif', aliases='g')
+async def random_gif(ctx: Context, *, search: Optional[str]):
+    search = quote_plus(search)
+
+    # todo v2
+    search_random = 'https://api.tenor.com/v1/random?key={}&q={}&limit=1&media_filter=basic'.format(
+        ctx.bot.config['tenor_token'], search
+    )
+    async with ctx.bot.session as session:
+        async with session.get(search_random) as random_request:
+            if random_request.ok:
+                random_json = await random_request.json()
+                results = random_json['results']
+                gif = results[0]
+                url = gif['url']
+
+                await ctx.send(url)
+
+
+# lock bicking lawyer
+@bot.command(aliases=['lbl'])
+async def leaderblame(self, ctx: commands.Context, word: str):
+    query = 'SELECT user, COUNT(*) AS num FROM lb WHERE word = ? GROUP BY user ORDER BY num DESC LIMIT 10;'
+    arg = (word,)
+    thumb = None
+    title = word
+    async with self.conn.execute_fetchall(query, arg) as rows:
+        total = sum(r[1] for r in rows)
+
+    content = '\n'.join(
+        f'{utils.get(ctx.guild.members, id=r[0]).mention} ({r[1]})' for r in rows
+    )
+    embed = Embed(title=title, description=content)
+    embed.set_footer(text=f'Total {total}', icon_url=thumb)
+
+    await ctx.send(embed=embed)
+
+
+@bot.command(aliases=['lb'])
+async def leaderboard(self, ctx: commands.Context, person: Optional[Member]):
+    # idk how this works but it sure does
+    # or, in sql language:
+    # IDK HOW this, WORKS BUT (it) SURE DOES
+    if person is not None:
+        query = 'SELECT word, COUNT(*) AS num FROM lb WHERE user = ? GROUP BY word ORDER BY num DESC LIMIT 10;'
+        arg = (person.id,)
+        thumb = person.avatar.url
+        title = person.name
+    else:
+        query = 'SELECT word, COUNT(*) AS num FROM lb GROUP BY word ORDER BY num DESC LIMIT 10;'
+        arg = ()
+        thumb = ctx.guild.icon.url
+        title = ctx.guild.name
+
+    async with self.conn.execute_fetchall(query, arg) as rows:
+        total = sum(r[1] for r in rows)
+        content = '\n'.join(f'{r[0]} ({r[1]})' for r in rows)
+    embed = Embed(title=title, description=content)
+    embed.set_footer(text=f'Total {total}', icon_url=thumb)
+
+    await ctx.send(embed=embed)
+
+
+@bot.command(hidden=True)
+@commands.has_role(MOD_ROLE)
+async def shutdown(self, ctx: commands.Context, restart: bool = True):
+    # works with pterodactyl
+    # todo file thingy# everytihings going to start working soon
+    print('Received shutdown order')
+    if restart:
+        message = 'Restarting'
+        exit_code = 7
+    else:
+        if not await self.is_owner(ctx.author):
+            print('No')
+            return
+        message = 'Shutting down'
+        exit_code = 0
+    await ctx.send(message)
+    sys.exit(exit_code)
+
+
 def main():
-    intents = discord.Intents.default()
-    intents.members = True
-    intents.message_content = True
-    # todo make better
-    bot = CmpcDidThis(command_prefix='test', intents=intents, help_command=None)
     print('Connecting to discord...')
     bot.run(bot.config['discord_token'])
 
