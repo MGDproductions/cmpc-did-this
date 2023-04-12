@@ -403,7 +403,7 @@ async def leaderblame(ctx: Context, word: str):
     for r in rows:
         user = ctx.bot.get_user(r[0])
         mention = '<@0>' if user is None else user.mention
-        content_list.append(mention)
+        content_list.append(f'{mention} ({r[1]})')
     content = '\n'.join(content_list)
     embed = Embed(title=title, description=content)
     embed.set_footer(text=f'Total {total}', icon_url=thumb)
