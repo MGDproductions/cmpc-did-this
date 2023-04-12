@@ -366,7 +366,7 @@ bot = CmpcDidThis(
 )
 
 
-@bot.hybrid_command(hidden=True)
+@bot.command(hidden=True)
 @commands.has_role(MOD_ROLE)
 async def backfill_database(
     ctx: Context,
@@ -498,18 +498,18 @@ async def random_word(ctx: Context):
     return await ctx.send(random.choice(common_words))
 
 
-@bot.hybrid_command(hidden=True)
+@bot.command(hidden=True)
 @commands.is_owner()
 async def say(ctx: Context, *, text: str):
     return await ctx.send(text)
 
 
-@bot.hybrid_command(hidden=True)
+@bot.command(hidden=True)
 async def testconn(ctx: Context):
     return await ctx.send('hi there dude!')
 
 
-@bot.hybrid_command(hidden=True)
+@bot.command(hidden=True)
 # @commands.has_role(MOD_ROLE)
 @commands.is_owner()
 async def shutdown(ctx: Context):
