@@ -37,6 +37,7 @@ MEMBER_ROLE = 932977796492427276
 FISH_ROLE = 875359516131209256
 GENERAL_CHANNEL = 714154159590473801
 CLOCK_VOICE_CHANNEL = 753467367966638100
+EGGYBOI_GUILD = 714154158969716780
 
 GREEN = discord.Color.green()
 RED = discord.Color.red()
@@ -120,9 +121,15 @@ class CmpcDidThis(commands.Bot):
         print('done')  # this line is needed to work with ptero
 
     async def on_ready(self):
+        # start task loops
         for t in self.tasks:
             if not t.is_running():
                 t.start()
+        # upload slash commands
+        server = self.get_guild(EGGYBOI_GUILD)
+        self.tree.copy_global_to(guild=server)
+        await self.tree.sync(guild=server)
+        # set activity
         await self.change_presence(
             activity=discord.Activity(
                 type=discord.ActivityType.watching, name='the cmpc discord'
@@ -354,22 +361,24 @@ bot = CmpcDidThis(
 
 @bot.hybrid_command(name='word')
 async def random_word(ctx: Context):
+    """gives you a random word"""
     return await ctx.send(random.choice(common_words))
 
 
-@bot.hybrid_command()
+@bot.hybrid_command(hidden=True)
 @commands.is_owner()
 async def say(ctx: Context, *, text: str):
     return await ctx.send(text)
 
 
-@bot.hybrid_command()
+@bot.hybrid_command(hidden=True)
 async def testconn(ctx: Context):
     return await ctx.send('hi there dude!')
 
 
 @bot.hybrid_command(name='game')
 async def random_game(ctx: Context):
+    """gives you a random game"""
     async with ctx.bot.session.get(
         'https://store.steampowered.com/explore/random/'
     ) as response:
@@ -381,12 +390,14 @@ async def random_game(ctx: Context):
 async def random_number(
     ctx: Context, startnumber: Optional[int], endnumber: Optional[int]
 ):
+    """gives you a random number"""
     randomnumber = random.randint(startnumber, endnumber)
     await ctx.send(f'{randomnumber}')
 
 
 @bot.hybrid_command(name='capybara', aliases=('capy',))
 async def capybara(ctx: Context):
+    """gives you a random capybara"""
     async with ctx.typing():
         async with ctx.bot.session.get('https://api.capy.lol/v1/capybara') as response:
             fp = BytesIO(await response.content.read())
@@ -399,6 +410,7 @@ async def capybara(ctx: Context):
 
 @bot.hybrid_command(name='gif', aliases=('g',))
 async def random_gif(ctx: Context, *, search: Optional[str]):
+    """gives you a random gif"""
     async with ctx.typing():
         if search is None:
             search = random.choice(common_words)
@@ -423,6 +435,7 @@ async def random_gif(ctx: Context, *, search: Optional[str]):
 # lock bicking lawyer
 @bot.hybrid_command(aliases=('lbl',))
 async def leaderblame(ctx: Context, word: str):
+    """whodunnit?"""
     query = 'SELECT user, COUNT(*) AS num FROM lb WHERE word = ? GROUP BY user ORDER BY num DESC LIMIT 10;'
     arg = (word,)
     thumb = None
@@ -432,7 +445,7 @@ async def leaderblame(ctx: Context, word: str):
 
     content_list = []
     for r in rows:
-        user = utils.get(ctx.guild.members, id=r[0])
+        user = ctx.bot.get_user(r[0])
         mention = '<@0>' if user is None else user.mention
         content_list.append(mention)
     content = '\n'.join(content_list)
