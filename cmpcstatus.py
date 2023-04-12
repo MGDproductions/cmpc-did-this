@@ -368,12 +368,17 @@ bot = CmpcDidThis(
 
 @bot.hybrid_command(hidden=True)
 @commands.has_role(MOD_ROLE)
-async def backfill_database(ctx: Context, channel: discord.TextChannel):
+async def backfill_database(
+    ctx: Context,
+    channel: discord.TextChannel,
+    limit: Optional[int],
+    around: Optional[Message],
+):
     await ctx.send('Loading history')
     count = 0
     swears = 0
     ignored = 0
-    async for message in channel.history():
+    async for message in channel.history(limit=limit, around=around):
         count += 1
         try:
             swears += await ctx.bot.process_profanity(message)
