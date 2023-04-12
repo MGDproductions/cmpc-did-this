@@ -8,8 +8,7 @@ import random
 import sys
 import urllib.parse
 from io import BytesIO
-from pathlib import Path
-from typing import Optional, Union
+from typing import Optional
 from zoneinfo import ZoneInfo
 
 import aiohttp
@@ -27,19 +26,22 @@ from assets.words import common_words
 INTENTS = discord.Intents.default()
 INTENTS.members = True
 INTENTS.message_content = True
-BIRTHDAY = False
+
 CLOCK = True
 FISHGAMINGWEDNESDAY = True
 WELCOME = True
+
 FISH_TEXT_CHANNEL = 875297517351358474
 MOD_ROLE = 725356663850270821
 MEMBER_ROLE = 932977796492427276
 FISH_ROLE = 875359516131209256
 GENERAL_CHANNEL = 714154159590473801
 CLOCK_VOICE_CHANNEL = 753467367966638100
+
 GREEN = discord.Color.green()
 RED = discord.Color.red()
 BLUE = discord.Color.blue()
+
 SAD_CAT_EMOJI = discord.PartialEmoji.from_str('<:sad_cat:770191103310823426>')
 AMSTERDAM = ZoneInfo('Europe/Amsterdam')
 WEDNESDAY = 3
@@ -50,10 +52,8 @@ COMMAND_PREFIX = [
     '$',
 ]
 
-PathLike = Union[str, Path]
 
-
-def config_object_hook(obj: dict, fp: PathLike = 'config.template.json') -> dict:
+def config_object_hook(obj: dict, fp: str = 'config.template.json') -> dict:
     with open(fp) as file:
         template: dict = json.load(file)
     if not isinstance(template, dict):
@@ -69,7 +69,7 @@ def config_object_hook(obj: dict, fp: PathLike = 'config.template.json') -> dict
     return obj
 
 
-def load_config(fp: PathLike = 'config.json') -> dict:
+def load_config(fp: str = 'config.json') -> dict:
     with open(fp) as file:
         return json.load(file, object_hook=config_object_hook)
 
@@ -169,13 +169,16 @@ class CmpcDidThis(commands.Bot):
 
     async def on_member_join(self, member: Member):
         role = utils.get(member.guild.roles, id=MEMBER_ROLE)
-        if role is not None:
-            await member.add_roles(role)
-        if WELCOME:
-            name = member.name
-            welcome_message = f'{name} joined'
-            print(welcome_message)
+        await member.add_roles(role)
 
+        if not WELCOME:
+            return
+        name = member.name
+        welcome_message = f'{name} joined'
+        print(welcome_message)
+
+        channel = self.get_channel(GENERAL_CHANNEL)
+        async with channel.typing():
             # create image
             newline = '\n' if len(name) > 10 else ' '
             text = f'Welcome!{newline}{name}'
@@ -196,15 +199,14 @@ class CmpcDidThis(commands.Bot):
             )
 
             # send image
-            channel = self.get_channel(GENERAL_CHANNEL)
             filename = 'cmpcwelcome.png'
-            with BytesIO() as fp:
-                image.save(fp, 'PNG')
-                fp.seek(0)
-                file = discord.File(fp, filename=filename)
-                embed = Embed(title=welcome_message, color=RED)
-                embed.set_image(url=f'attachment://{filename}')
-                await channel.send(content=member.mention, file=file, embed=embed)
+            fp = BytesIO()
+            image.save(fp, 'PNG')
+            fp.seek(0)
+            file = discord.File(fp, filename=filename)
+            embed = Embed(title=welcome_message, color=RED)
+            embed.set_image(url=f'attachment://{filename}')
+            await channel.send(content=member.mention, file=file, embed=embed)
 
     async def on_member_remove(self, member):
         channel = self.get_channel(GENERAL_CHANNEL)
@@ -228,8 +230,7 @@ class CmpcDidThis(commands.Bot):
         ams_time = datetime_amsterdam.strftime('cmpc: %H:%M')
         print(f'time for cmpc: {ams_time}')
         channel = self.get_channel(CLOCK_VOICE_CHANNEL)
-        if channel is not None:
-            await channel.edit(name=ams_time)
+        await channel.edit(name=ams_time)
 
     def wednesday_channel(self, *, day: int) -> Optional[discord.TextChannel]:
         datetime_amsterdam = datetime.datetime.now(AMSTERDAM)
@@ -386,35 +387,35 @@ async def random_number(
 
 @bot.hybrid_command(name='capybara', aliases=('capy',))
 async def capybara(ctx: Context):
-    async with ctx.bot.session.get('https://api.capy.lol/v1/capybara') as response:
-        fp = BytesIO(await response.content.read())
-    embed = Embed(title='capybara for u!', color=RED)
-    filename = 'capybara.png'
-    file = discord.File(fp, filename=filename)
-    embed.set_image(url=f'attachment://{filename}')
+    async with ctx.typing():
+        async with ctx.bot.session.get('https://api.capy.lol/v1/capybara') as response:
+            fp = BytesIO(await response.content.read())
+        embed = Embed(title='capybara for u!', color=RED)
+        filename = 'capybara.png'
+        file = discord.File(fp, filename=filename)
+        embed.set_image(url=f'attachment://{filename}')
     await ctx.send(embed=embed, file=file)
-    fp.close()
 
 
 @bot.hybrid_command(name='gif', aliases=('g',))
 async def random_gif(ctx: Context, *, search: Optional[str]):
-    if search is None:
-        search = random.choice(common_words)
-    search = urllib.parse.quote_plus(search.encode(encoding='utf-8'))
+    async with ctx.typing():
+        if search is None:
+            search = random.choice(common_words)
+        search = urllib.parse.quote_plus(search.encode(encoding='utf-8'))
 
-    # https://developers.google.com/tenor/guides/endpoints
-    # I love the new Google State!
-    search_random = (
-        'https://tenor.googleapis.com/v2/search?key={}&q={}&random=true&limit=1'.format(
-            ctx.bot.config['tenor_token'], search
+        # https://developers.google.com/tenor/guides/endpoints
+        # I love the new Google State!
+        search_url = (
+            'https://tenor.googleapis.com/v2/search?key={}&q={}&random=true&limit=1'
         )
-    )
-    async with ctx.bot.session.get(search_random) as request:
-        request.raise_for_status()
-        random_json = await request.json()
-    results = random_json['results']
-    gif = results[0]
-    url = gif['url']
+        search_random = search_url.format(ctx.bot.config['tenor_token'], search)
+        async with ctx.bot.session.get(search_random) as request:
+            request.raise_for_status()
+            random_json = await request.json()
+        results = random_json['results']
+        gif = results[0]
+        url = gif['url']
 
     await ctx.send(url)
 
@@ -477,7 +478,9 @@ async def shutdown(ctx: Context):
 
 def main():
     print('Connecting to discord...')
-    bot.run(bot.config['discord_token'], log_level=logging.WARNING)
+    handler = logging.StreamHandler(sys.stdout)
+    formatter = logging.Formatter(logging.BASIC_FORMAT)
+    bot.run(bot.config['discord_token'], log_handler=handler, log_formatter=formatter)
 
 
 if __name__ == '__main__':
