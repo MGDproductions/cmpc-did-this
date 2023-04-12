@@ -16,7 +16,7 @@ import aiohttp
 import aiosqlite
 import discord
 from better_profanity import profanity
-from discord import Embed, File, Member, Message, utils
+from discord import Embed, Member, Message, utils
 from discord.ext import commands, tasks
 from discord.ext.commands import Context
 from PIL import Image, ImageDraw, ImageFont
@@ -123,11 +123,13 @@ class CmpcDidThis(commands.Bot):
         print(f'Connected to discord as: {self.user}')
 
     async def close(self):
+        print('Closing bot instance')
         await super().close()
         await self.conn.close()
         await self.session.close()
         for task in (self.clock, self.fgw_start, self.fgw_end, self.fgw_end_final):
             task.stop()
+        print('Closed gracefully')
 
     async def process_profanity(self, message: Message):
         lower = message.content.casefold()
@@ -159,8 +161,9 @@ class CmpcDidThis(commands.Bot):
 
     async def on_member_join(self, member: Member):
         role = utils.get(member.guild.roles, id=MEMBER_ROLE)
-        await member.add_roles(role)
-        if self.config['welcome']:
+        if role is not None:
+            await member.add_roles(role)
+        if WELCOME:
             name = member.name
             welcome_message = f'{name} joined'
             print(welcome_message)
@@ -168,34 +171,34 @@ class CmpcDidThis(commands.Bot):
             # create image
             newline = '\n' if len(name) > 10 else ' '
             text = f'Welcome!{newline}{name}'
-            image = Image.open('assets/bg.png')
-            font = ImageFont.truetype('assets/Berlin Sans FB Demi Bold.ttf', 40)
-            draw = ImageDraw.Draw(image, 'RGBA')
-            _left, _top, text_width, text_height = draw.textbbox(
-                (0, 0), text, font=font
+            image = Image.open('assets/bg.png', formats=['PNG'])
+            draw = ImageDraw.Draw(image)
+            draw.font = ImageFont.truetype('assets/Berlin Sans FB Demi Bold.ttf', 40)
+            _, _, width, height = draw.textbbox(
+                (0, 0), text
             )
             position = (
-                (image.width - text_width) / 2,
-                (image.height - text_height) / 2,
+                (image.width - width) / 2,
+                (image.height - height) / 2,
             )
             draw.text(
                 position,
                 text,
                 fill='white',
-                font=font,
                 stroke_width=3,
                 stroke_fill='black',
             )
 
             # send image
             channel = self.get_channel(GENERAL_CHANNEL)
-            savestring = 'cmpcwelcome.png'
-            fp = BytesIO()
-            image.save(fp, 'PNG')
-            file = File(fp, filename='cmpcwelcome.png')
-            embed = Embed(title=welcome_message, color=RED)
-            embed.set_image(url=f'attachment://{savestring}')
-            await channel.send(content=member.mention, file=file, embed=embed)
+            filename = 'cmpcwelcome.png'
+            with BytesIO() as fp:
+                image.save(fp, 'PNG')
+                fp.seek(0)
+                file = discord.File(fp, filename=filename)
+                embed = Embed(title=welcome_message, color=RED)
+                embed.set_image(url=f'attachment://{filename}')
+                await channel.send(content=member.mention, file=file, embed=embed)
 
     async def on_member_remove(self, member):
         channel = self.get_channel(GENERAL_CHANNEL)
@@ -243,7 +246,7 @@ class CmpcDidThis(commands.Bot):
         await channel.set_permissions(
             channel.guild.default_role, overwrite=perms, reason='fgw_start'
         )
-        await channel.send(f'<@&{FISH_ROLE}>', file=File(r'fishgamingwednesday.mp4'))
+        await channel.send(f'<@&{FISH_ROLE}>', file=discord.File('fishgamingwednesday.mp4'))
         print('fish gaming wednesday started')
 
     @tasks.loop(time=datetime.time(hour=0))
@@ -269,8 +272,9 @@ class CmpcDidThis(commands.Bot):
 
         # create countdown message
         embed = Embed(title='Fish gaming wednesday has ended.', color=BLUE)
-        embed.set_image(url=('attachment://' + 'fgwends.png'))
-        file = File('fgwends.png', filename='assets/fgwends.png')
+        filename = 'fgwends.png'
+        embed.set_image(url=f'attachment://{filename}')
+        file = discord.File('fgwends.png', filename=f'assets/{filename}')
         embed.add_field(
             name=countdown_text(5),
             value='** **',
@@ -372,12 +376,13 @@ async def random_number(
 @bot.hybrid_command(name='capybara', aliases=('capy',))
 async def capybara(ctx: Context):
     async with ctx.bot.session.get('https://api.capy.lol/v1/capybara') as response:
-        img_bytes = BytesIO(await response.content.read())
+        fp = BytesIO(await response.content.read())
     embed = Embed(title='capybara for u!', color=RED)
     filename = 'capybara.png'
-    file = File(img_bytes, filename=filename)
-    embed.set_image(url=('attachment://' + filename))
-    await ctx.send(file=file, embed=embed)
+    file = discord.File(fp, filename=filename)
+    embed.set_image(url=f'attachment://{filename}')
+    await ctx.send(embed=embed, file=file)
+    fp.close()
 
 
 @bot.hybrid_command(name='gif', aliases=('g',))
@@ -405,7 +410,7 @@ async def random_gif(ctx: Context, *, search: Optional[str]):
 
 # lock bicking lawyer
 @bot.hybrid_command(aliases=('lbl',))
-async def leaderblame(ctx: commands.Context, word: str):
+async def leaderblame(ctx: Context, word: str):
     query = 'SELECT user, COUNT(*) AS num FROM lb WHERE word = ? GROUP BY user ORDER BY num DESC LIMIT 10;'
     arg = (word,)
     thumb = None
@@ -413,17 +418,27 @@ async def leaderblame(ctx: commands.Context, word: str):
     async with ctx.bot.conn.execute_fetchall(query, arg) as rows:
         total = sum(r[1] for r in rows)
 
-    content = '\n'.join(
-        f'{utils.get(ctx.guild.members, id=r[0]).mention} ({r[1]})' for r in rows
-    )
+    content_list = []
+    for r in rows:
+        user = utils.get(ctx.guild.members, id=r[0])
+        mention = '<@0>' if user is None else user.mention
+        content_list.append(mention)
+    content = '\n'.join(content_list)
     embed = Embed(title=title, description=content)
     embed.set_footer(text=f'Total {total}', icon_url=thumb)
 
     await ctx.send(embed=embed)
 
 
+@bot.hybrid_command(hidden=True)
+@commands.has_role(MOD_ROLE)
+async def testjoin(ctx: Context, member: Member):
+    await ctx.send('test')
+    await bot.on_member_join(member)
+
+
 @bot.hybrid_command(aliases=('lb',))
-async def leaderboard(ctx: commands.Context, person: Optional[Member]):
+async def leaderboard(ctx: Context, person: Optional[Member]):
     # idk how this works but it sure does
     # or, in sql language:
     # IDK HOW this, WORKS BUT (it) SURE DOES
@@ -449,7 +464,7 @@ async def leaderboard(ctx: commands.Context, person: Optional[Member]):
 
 @bot.hybrid_command(hidden=True)
 @commands.has_role(MOD_ROLE)
-async def shutdown(ctx: commands.Context):
+async def shutdown(ctx: Context):
     # works with pterodactyl?
     print('Received shutdown order')
     await ctx.send('Shutting down')
