@@ -12,11 +12,11 @@ from io import BytesIO
 from pathlib import Path
 from typing import Optional, Union
 from urllib.parse import quote_plus
+from zoneinfo import ZoneInfo
 
 import aiohttp
 import aiosqlite
 import discord
-import pytz
 from better_profanity import profanity
 from discord import Embed, File, Member, Message, utils
 from discord.ext import commands, tasks
@@ -42,15 +42,15 @@ CLOCK_VOICE_CHANNEL = 753467367966638100
 GREEN = discord.Color.green()
 RED = discord.Color.red()
 SAD_CAT_EMOJI = discord.PartialEmoji.from_str('<:sad_cat:770191103310823426>')
-
+AMSTERDAM = ZoneInfo('Europe/Amsterdam')
 # order is very important
 # longest ones first
 COMMAND_PREFIX = [
-    'random ',
+    'random ',  # space is needed
     'cmpc.',
     'c.',
     '$',
-]  # space is needed
+]
 
 PathLike = Union[str, Path]
 
@@ -74,10 +74,6 @@ def load_config(fp: PathLike = 'config.json') -> dict:
     with open(fp) as file:
         return json.load(file, object_hook=config_object_hook)
 
-
-# todo remove
-fishgaming = True
-fishrestarting = True
 
 profanity_intercept = [':3']
 # need to differ between slurs and normal profanity.
@@ -211,92 +207,98 @@ class CmpcDidThis(commands.Bot):
         await self.process_profanity(message)
         await self.process_commands(message)
 
-    @tasks.loop(seconds=60)
+    @tasks.loop(
+        time=[datetime.time(minute=n, tzinfo=AMSTERDAM) for n in range(0, 60, 10)]
+    )
     async def clock(self):
-        amsterdam = pytz.timezone('Europe/Amsterdam')
-        datetime_amsterdam = datetime.datetime.now(amsterdam)
-        ams_time = datetime_amsterdam.strftime('%H:%M')
-        minute_check = datetime_amsterdam.minute
-        if minute_check % 10 == 0:
-            print(f'time for cmpc:{ams_time}')
-            channel = self.get_channel(CLOCK_VOICE_CHANNEL)
-            ctime = 'cmpc: ' + ams_time
-            await channel.edit(name=ctime)
+        datetime_amsterdam = datetime.datetime.now(AMSTERDAM)
+        ams_time = datetime_amsterdam.strftime('cmpc: %H:%M')
+        print(f'time for cmpc: {ams_time}')
+        channel = self.get_channel(CLOCK_VOICE_CHANNEL)
+        if channel is not None:
+            await channel.edit(name=ams_time)
 
-    @tasks.loop(seconds=60)
-    async def fish(self):
-        global fishgaming
-        global fishrestarting
-        datetime_gmt = datetime.datetime.now()
-        weekday = datetime_gmt.isoweekday()
+    @tasks.loop(time=datetime.time(hour=0))
+    async def fgw_start(self):
+        # only run on wednesday
+        datetime_amsterdam = datetime.datetime.now(AMSTERDAM)
+        if datetime_amsterdam.day != 3:
+            return
+
         channel = self.get_channel(FISH_TEXT_CHANNEL)
-        if weekday == 3:
-            if fishrestarting and not fishgaming:
-                perms = channel.overwrites_for(channel.guild.default_role)
-                perms.update(
-                    view_channel=True,
-                    send_messages=True,
-                    create_public_threads=True,
-                    create_private_threads=True,
-                    send_messages_in_threads=True,
-                )
-                await channel.set_permissions(
-                    channel.guild.default_role, overwrite=perms
-                )
-                await channel.send(f'<@&{FISH_ROLE}>')
-                fishgaming = True
-                print('fish gaming wednesday started')
-                await channel.send(file=File(r'fishgamingwednesday.mp4'))
-            else:
-                fishgaming = True
-        if weekday != 3:
-            if fishgaming:
-                fishrestarting = False
+        perms = channel.overwrites_for(channel.guild.default_role)
+        perms.update(
+            view_channel=True,
+            send_messages=True,
+            create_public_threads=True,
+            create_private_threads=True,
+            send_messages_in_threads=True,
+        )
+        await channel.set_permissions(
+            channel.guild.default_role, overwrite=perms, reason='fgw_start'
+        )
+        await channel.send(f'<@&{FISH_ROLE}>', file=File(r'fishgamingwednesday.mp4'))
+        print('fish gaming wednesday started')
 
-                embed = Embed(title='Fish gaming wednesday has ended.', color=0x69CCE7)
-                embed.set_image(url=('attachment://' + 'fgwends.png'))
-                file = File('fgwends.png', filename='assets/fgwends.png')
-                embed.add_field(
-                    name='In 5 minutes this channel will be hidden.',
-                    value='** **',
-                    inline=False,
-                )
-                message = await channel.send(file=file, embed=embed)
+    @tasks.loop(time=datetime.time(hour=0))
+    async def fgw_end(self):
+        # only run on thursday (end of wednesday)
+        datetime_amsterdam = datetime.datetime.now(AMSTERDAM)
+        if datetime_amsterdam.day != 4:
+            return
+        channel = self.get_channel(FISH_TEXT_CHANNEL)
 
-                # set channel to read-only, then wait five minutes
-                perms = channel.overwrites_for(channel.guild.default_role)
-                perms.update(
-                    send_messages=False,
-                    create_public_threads=False,
-                    create_private_threads=False,
-                    send_messages_in_threads=False,
-                )
-                await channel.set_permissions(
-                    channel.guild.default_role, overwrite=perms
-                )
+        # set channel to read-only
+        perms = channel.overwrites_for(channel.guild.default_role)
+        perms.update(
+            send_messages=False,
+            create_public_threads=False,
+            create_private_threads=False,
+            send_messages_in_threads=False,
+        )
+        await channel.set_permissions(
+            channel.guild.default_role, overwrite=perms
+        )
 
-                for i in range(4, 1, -1):
-                    await asyncio.sleep(60)
-                    embed.fields[
-                        0
-                    ].name = f'In {i} minutes this channel will be hidden.'
-                    await message.edit(embed=embed)
+        def countdown_text(n: int) -> str:
+            s = 's' if n != 1 else ''
+            return f'In {n}n minute{s} this channel will be hidden.'
 
-                await asyncio.sleep(60)
-                embed.fields[0].name = 'In 1 minute this channel will be hidden.'
-                await message.edit(embed=embed)
-                await asyncio.sleep(60)
+        # create countdown message
+        embed = Embed(title='Fish gaming wednesday has ended.', color=0x69CCE7)
+        embed.set_image(url=('attachment://' + 'fgwends.png'))
+        file = File('fgwends.png', filename='assets/fgwends.png')
+        embed.add_field(
+            name=countdown_text(5),
+            value='** **',
+            inline=False,
+        )
+        message = await channel.send(embed=embed, file=file)
 
-                # hide channel
-                perms = channel.overwrites_for(channel.guild.default_role)
-                perms.update(view_channel=False)
-                await channel.set_permissions(
-                    channel.guild.default_role, overwrite=perms
-                )
-                embed6 = Embed(title='Fish gaming wednesday has ended.', color=0x69CCE7)
-                embed6.set_image(url=('attachment://' + 'fgwends.png'))
-                await message.edit(embed=embed6)
-                fishgaming = False
+        # edit message until countdown ends
+        for i in range(5, 0, -1):
+            await asyncio.sleep(60)
+            embed.fields[0].name = countdown_text(i)
+            await message.edit(embed=embed)
+
+        # leave a final message
+        embed.remove_field(0)
+        await message.edit(embed=embed)
+
+    @tasks.loop(time=datetime.time(hour=0, minute=5))
+    async def fgw_end_final(self):
+        # only run on thursday (end of wednesday)
+        datetime_amsterdam = datetime.datetime.now(AMSTERDAM)
+        if datetime_amsterdam.day != 4:
+            return
+        channel = self.get_channel(FISH_TEXT_CHANNEL)
+
+        # hide channel
+        perms = channel.overwrites_for(channel.guild.default_role)
+        perms.update(view_channel=False)
+        await channel.set_permissions(
+            channel.guild.default_role, overwrite=perms
+        )
 
 
 class CmpcDidThisHelp(commands.DefaultHelpCommand):
