@@ -81,8 +81,8 @@ profanity.load_censor_words()
 profanity.add_censor_words(profanity_intercept)
 
 
-def profanity_predict(pwords: list[str]) -> list[bool]:
-    profanity_array = [profanity.contains_profanity(x) for x in pwords]
+def profanity_predict(words: list[str]) -> list[bool]:
+    profanity_array = [x in profanity_intercept or profanity.contains_profanity(x) for x in words]
     return profanity_array
 
 
@@ -154,10 +154,9 @@ class CmpcDidThis(commands.Bot):
         lower = message.content.casefold()
         mwords = lower.split()
         profanity_array = profanity_predict(mwords)
-
         swears = []
-        for i, word in enumerate(mwords):
-            if profanity_array[i] or word in profanity_intercept:
+        for word, profane in zip(mwords, profanity_array):
+            if profane:
                 swears.append(word)
         if not swears:
             return 0
@@ -387,11 +386,21 @@ async def backfill_database(
     await ctx.send(f'Messages {count} ignored {ignored} swears {swears} in {channel.mention}')
 
 
+class ProfanityConverter(commands.Converter[str]):
+    async def convert(self, ctx: Context, argument: str) -> str:
+        word = argument.casefold()
+        check = profanity_predict([word])[0]
+        if not check:
+            raise commands.BadArgument('Not a swear! L boomer.')
+        return word
+
+
 # COMMANDS
 # lock bicking lawyer
 @bot.hybrid_command(aliases=('lbl',))
-async def leaderblame(ctx: Context, word: str):
+async def leaderblame(ctx: Context, word: ProfanityConverter):
     """whodunnit?"""
+
     query = 'SELECT user, COUNT(*) AS num FROM lb WHERE word = ? GROUP BY user ORDER BY num DESC LIMIT 10;'
     arg = (word,)
     thumb = None
@@ -485,7 +494,7 @@ async def random_gif(ctx: Context, *, search: Optional[str]):
 
 @bot.hybrid_command(name='number')
 async def random_number(
-    ctx: Context, startnumber: Optional[int], endnumber: Optional[int]
+    ctx: Context, startnumber: int, endnumber: int
 ):
     """gives you a random number"""
     randomnumber = random.randint(startnumber, endnumber)
