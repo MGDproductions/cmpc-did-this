@@ -4,14 +4,12 @@ import asyncio
 import datetime
 import json
 import logging
-import os
 import random
 import sys
-import textwrap
 from io import BytesIO
 from pathlib import Path
 from typing import Optional, Union
-from urllib.parse import quote_plus
+import urllib.parse
 from zoneinfo import ZoneInfo
 
 import aiohttp
@@ -41,6 +39,7 @@ GENERAL_CHANNEL = 714154159590473801
 CLOCK_VOICE_CHANNEL = 753467367966638100
 GREEN = discord.Color.green()
 RED = discord.Color.red()
+BLUE = discord.Color.blue()
 SAD_CAT_EMOJI = discord.PartialEmoji.from_str('<:sad_cat:770191103310823426>')
 AMSTERDAM = ZoneInfo('Europe/Amsterdam')
 # order is very important
@@ -61,6 +60,7 @@ def config_object_hook(obj: dict, fp: PathLike = 'config.template.json') -> dict
     if not isinstance(template, dict):
         raise TypeError(f'template: Expected dict, got {type(template)}')
     # make this more efficient when I move it to its own library
+    # also add namedtuple or class?
     for key in obj.keys():
         if key not in template:
             raise ValueError(f'Unexpected key: {key}')
@@ -76,8 +76,6 @@ def load_config(fp: PathLike = 'config.json') -> dict:
 
 
 profanity_intercept = [':3']
-# need to differ between slurs and normal profanity.
-# encrypt database entries?
 profanity.load_censor_words()
 profanity.add_censor_words(profanity_intercept)
 
@@ -111,7 +109,8 @@ class CmpcDidThis(commands.Bot):
         if CLOCK:
             self.clock.start()
         if FISHGAMINGWEDNESDAY:
-            self.fish.start()
+            for task in (self.fgw_start, self.fgw_end, self.fgw_end_final):
+                task.start()
 
         print('done')  # this line is needed to work with ptero
 
@@ -125,12 +124,10 @@ class CmpcDidThis(commands.Bot):
 
     async def close(self):
         await super().close()
-        for closeable in (self.conn, self.session):
-            if closeable is not None:
-                await closeable.close()
-        for task in (self.clock, self.fish):
-            if task.is_running():
-                task.stop()
+        await self.conn.close()
+        await self.session.close()
+        for task in (self.clock, self.fgw_start, self.fgw_end, self.fgw_end_final):
+            task.stop()
 
     async def process_profanity(self, message: Message):
         lower = message.content.casefold()
@@ -160,47 +157,50 @@ class CmpcDidThis(commands.Bot):
         )
         await self.conn.commit()
 
-    async def on_member_join(self, member):
+    async def on_member_join(self, member: Member):
         role = utils.get(member.guild.roles, id=MEMBER_ROLE)
         await member.add_roles(role)
         if self.config['welcome']:
-            print(member.name + ' joined')
-            strip_width, strip_height = 471, 155
-            unwrapped = 'Welcome! ' + member.name
-            text = '\n'.join(textwrap.wrap(unwrapped, width=19))
-            background = Image.open('assets/bg.png').convert('RGBA')
+            name = member.name
+            welcome_message = f'{name} joined'
+            print(welcome_message)
+
+            # create image
+            newline = '\n' if len(name) > 10 else ' '
+            text = f'Welcome!{newline}{name}'
+            image = Image.open('assets/bg.png')
             font = ImageFont.truetype('assets/Berlin Sans FB Demi Bold.ttf', 40)
-            draw = ImageDraw.Draw(background)
+            draw = ImageDraw.Draw(image, 'RGBA')
             _left, _top, text_width, text_height = draw.textbbox(
                 (0, 0), text, font=font
             )
             position = (
-                (strip_width - text_width) / 2,
-                (strip_height - text_height) / 2,
+                (image.width - text_width) / 2,
+                (image.height - text_height) / 2,
             )
             draw.text(
                 position,
                 text,
-                color=(255, 255, 255),
+                fill='white',
                 font=font,
                 stroke_width=3,
                 stroke_fill='black',
             )
+
+            # send image
             channel = self.get_channel(GENERAL_CHANNEL)
-            savestring = 'cmpcwelcome' + str(random.randint(0, 100000)) + '.png'
-            rgb_im = background.convert('RGB')
-            rgb_im.save(savestring, 'PNG')
-            embed = Embed(title=member.name + ' joined!', color=RED)
-            file = File(savestring, filename=savestring)
-            embed.set_image(url=('attachment://' + savestring))
-            await channel.send('<@' + str(member.id) + '>')
-            await channel.send(file=file, embed=embed)
-            os.remove(savestring)
+            savestring = 'cmpcwelcome.png'
+            fp = BytesIO()
+            image.save(fp, 'PNG')
+            file = File(fp, filename='cmpcwelcome.png')
+            embed = Embed(title=welcome_message, color=RED)
+            embed.set_image(url=f'attachment://{savestring}')
+            await channel.send(content=member.mention, file=file, embed=embed)
 
     async def on_member_remove(self, member):
         channel = self.get_channel(GENERAL_CHANNEL)
         await channel.send(
-            f'{SAD_CAT_EMOJI}*** {member.name} ***left the eggyboi family {SAD_CAT_EMOJI}'
+            f'{SAD_CAT_EMOJI} *** {member.name} *** left the eggyboi family {SAD_CAT_EMOJI}'
         )
 
     async def on_message(self, message: Message):
@@ -218,14 +218,20 @@ class CmpcDidThis(commands.Bot):
         if channel is not None:
             await channel.edit(name=ams_time)
 
+    def wednesday_channel(self, *, day: int) -> Optional[discord.TextChannel]:
+        datetime_amsterdam = datetime.datetime.now(AMSTERDAM)
+        if datetime_amsterdam.day != day:
+            return None
+        else:
+            return self.get_channel(FISH_TEXT_CHANNEL)
+
     @tasks.loop(time=datetime.time(hour=0))
     async def fgw_start(self):
         # only run on wednesday
-        datetime_amsterdam = datetime.datetime.now(AMSTERDAM)
-        if datetime_amsterdam.day != 3:
+        channel = self.wednesday_channel(day=3)
+        if channel is None:
             return
 
-        channel = self.get_channel(FISH_TEXT_CHANNEL)
         perms = channel.overwrites_for(channel.guild.default_role)
         perms.update(
             view_channel=True,
@@ -243,10 +249,9 @@ class CmpcDidThis(commands.Bot):
     @tasks.loop(time=datetime.time(hour=0))
     async def fgw_end(self):
         # only run on thursday (end of wednesday)
-        datetime_amsterdam = datetime.datetime.now(AMSTERDAM)
-        if datetime_amsterdam.day != 4:
+        channel = self.wednesday_channel(day=4)
+        if channel is None:
             return
-        channel = self.get_channel(FISH_TEXT_CHANNEL)
 
         # set channel to read-only
         perms = channel.overwrites_for(channel.guild.default_role)
@@ -256,16 +261,14 @@ class CmpcDidThis(commands.Bot):
             create_private_threads=False,
             send_messages_in_threads=False,
         )
-        await channel.set_permissions(
-            channel.guild.default_role, overwrite=perms
-        )
+        await channel.set_permissions(channel.guild.default_role, overwrite=perms)
 
         def countdown_text(n: int) -> str:
             s = 's' if n != 1 else ''
             return f'In {n}n minute{s} this channel will be hidden.'
 
         # create countdown message
-        embed = Embed(title='Fish gaming wednesday has ended.', color=0x69CCE7)
+        embed = Embed(title='Fish gaming wednesday has ended.', color=BLUE)
         embed.set_image(url=('attachment://' + 'fgwends.png'))
         file = File('fgwends.png', filename='assets/fgwends.png')
         embed.add_field(
@@ -288,21 +291,18 @@ class CmpcDidThis(commands.Bot):
     @tasks.loop(time=datetime.time(hour=0, minute=5))
     async def fgw_end_final(self):
         # only run on thursday (end of wednesday)
-        datetime_amsterdam = datetime.datetime.now(AMSTERDAM)
-        if datetime_amsterdam.day != 4:
+        channel = self.wednesday_channel(day=4)
+        if channel is None:
             return
-        channel = self.get_channel(FISH_TEXT_CHANNEL)
 
         # hide channel
         perms = channel.overwrites_for(channel.guild.default_role)
         perms.update(view_channel=False)
-        await channel.set_permissions(
-            channel.guild.default_role, overwrite=perms
-        )
+        await channel.set_permissions(channel.guild.default_role, overwrite=perms)
 
 
 class CmpcDidThisHelp(commands.DefaultHelpCommand):
-    async def send_bot_help(self, mapping, /):
+    async def send_bot_help(self, mapping: dict, /):
         ctx = self.context
         embed = Embed(title='cmpc did this commands', color=GREEN)
         pairs = (
@@ -320,7 +320,7 @@ class CmpcDidThisHelp(commands.DefaultHelpCommand):
         await ctx.send(embed=embed)
 
 
-def command_prefix(bot_: CmpcDidThis, message: discord.Message) -> list[str]:
+def command_prefix(bot_: CmpcDidThis, message: Message) -> list[str]:
     prefix_lengths = {p: len(p) for p in COMMAND_PREFIX}
     longest = max(prefix_lengths.values())
     message_start = message.content[:longest]
@@ -384,7 +384,7 @@ async def capybara(ctx: Context):
 async def random_gif(ctx: Context, *, search: Optional[str]):
     if search is None:
         search = random.choice(common_words)
-    search = quote_plus(search.encode(encoding='utf-8'))
+    search = urllib.parse.quote_plus(search.encode(encoding='utf-8'))
 
     # https://developers.google.com/tenor/guides/endpoints
     # I love the new Google State!
@@ -449,20 +449,11 @@ async def leaderboard(ctx: commands.Context, person: Optional[Member]):
 
 @bot.hybrid_command(hidden=True)
 @commands.has_role(MOD_ROLE)
-async def shutdown(ctx: commands.Context, restart: bool = True):
-    # works with pterodactyl
+async def shutdown(ctx: commands.Context):
+    # works with pterodactyl?
     print('Received shutdown order')
-    if restart:
-        message = 'Restarting'
-        exit_code = 7
-    else:
-        if not await ctx.bot.is_owner(ctx.author):
-            print('No')
-            return
-        message = 'Shutting down'
-        exit_code = 0
-    await ctx.send(message)
-    sys.exit(exit_code)
+    await ctx.send('Shutting down')
+    sys.exit()
 
 
 def main():
