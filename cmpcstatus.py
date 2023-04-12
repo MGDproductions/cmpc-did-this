@@ -82,7 +82,9 @@ profanity.add_censor_words(profanity_intercept)
 
 
 def profanity_predict(words: list[str]) -> list[bool]:
-    profanity_array = [x in profanity_intercept or profanity.contains_profanity(x) for x in words]
+    profanity_array = [
+        (x in profanity_intercept or profanity.contains_profanity(x)) for x in words
+    ]
     return profanity_array
 
 
@@ -262,9 +264,6 @@ class CmpcDidThis(commands.Bot):
         perms.update(
             view_channel=True,
             send_messages=True,
-            create_public_threads=True,
-            create_private_threads=True,
-            send_messages_in_threads=True,
         )
         await channel.set_permissions(
             channel.guild.default_role, overwrite=perms, reason='fgw_start'
@@ -286,9 +285,6 @@ class CmpcDidThis(commands.Bot):
         perms = channel.overwrites_for(channel.guild.default_role)
         perms.update(
             send_messages=False,
-            create_public_threads=False,
-            create_private_threads=False,
-            send_messages_in_threads=False,
         )
         await channel.set_permissions(
             channel.guild.default_role, overwrite=perms, reason='fgw_end'
@@ -383,7 +379,9 @@ async def backfill_database(
             swears += await ctx.bot.process_profanity(message)
         except aiosqlite.IntegrityError:
             ignored += 1
-    await ctx.send(f'Messages {count} ignored {ignored} swears {swears} in {channel.mention}')
+    await ctx.send(
+        f'Messages {count} ignored {ignored} swears {swears} in {channel.mention}'
+    )
 
 
 class ProfanityConverter(commands.Converter[str]):
@@ -493,9 +491,7 @@ async def random_gif(ctx: Context, *, search: Optional[str]):
 
 
 @bot.hybrid_command(name='number')
-async def random_number(
-    ctx: Context, startnumber: int, endnumber: int
-):
+async def random_number(ctx: Context, startnumber: int, endnumber: int):
     """gives you a random number"""
     randomnumber = random.randint(startnumber, endnumber)
     await ctx.send(f'{randomnumber}')
