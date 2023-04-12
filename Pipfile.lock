@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "3d0223ca18e1e01b9a7ae62089212d991ca3aab934e2f9f2a551cfd8aa7b46fd"
+            "sha256": "177c3bf9706d6d78f1b21978ed67910f33396a32ee51e93ff55768b570dc3ab4"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -231,6 +231,9 @@
             "version": "==3.1.0"
         },
         "discord.py": {
+            "extras": [
+                "speedup"
+            ],
             "hashes": [
                 "sha256:38fc52a784727b8e5e5749267089400035b187a009028eddfabeb182abcc6d52",
                 "sha256:b9944056bcb5711b2d04088848fd004466cf117c15c84fa798bf55470f28275f"
@@ -478,10 +481,10 @@
             "index": "pypi",
             "version": "==9.5.0"
         },
-        "pytz": {
+        "tzdata": {
             "hashes": [
-                "sha256:1d8ce29db189191fb55338ee6d0387d82ab59f3d00eac103412d64e0ebd0c588",
-                "sha256:a151b3abb88eda1d4e34a9814df37de2a80e301e68ba0fd856fb9b46bfbbbffb"
+                "sha256:11ef1e08e54acb0d4f95bdb1be05da659673de4acbd21bf9c69e94cc5e907a3a",
+                "sha256:7e65763eef3120314099b6939b5546db7adce1e7d6f2e179e3df563c70511eda"
             ],
             "index": "pypi",
             "version": "==2023.3"
