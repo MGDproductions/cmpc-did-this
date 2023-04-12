@@ -4,10 +4,10 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-pillow = "~=9.5.0"
 aiosqlite = "~=0.18.0"
 better-profanity = "~=0.7.0"
-"discord.py" = {extras = ["speedup"], version = "~=2.2.2"}
+"discord.py" = {extras = ["speed"], version = "~=2.2.2"}
+pillow = "~=9.5.0"
 tzdata = "*"
 
 [dev-packages]
