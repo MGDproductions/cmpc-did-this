@@ -374,7 +374,7 @@ async def backfill_database(
     limit: Optional[int],
     around: Optional[Message],
 ):
-    await ctx.send('Loading history')
+    await ctx.send(f'Loading history {channel.mention}')
     count = 0
     swears = 0
     ignored = 0
@@ -384,7 +384,7 @@ async def backfill_database(
             swears += await ctx.bot.process_profanity(message)
         except aiosqlite.IntegrityError:
             ignored += 1
-    await ctx.send(f'Messages {count} ignored {ignored} swears {swears}')
+    await ctx.send(f'Messages {count} ignored {ignored} swears {swears} in {channel.mention}')
 
 
 # COMMANDS
@@ -510,8 +510,7 @@ async def testconn(ctx: Context):
 
 
 @bot.command(hidden=True)
-# @commands.has_role(MOD_ROLE)
-@commands.is_owner()
+@commands.has_role(MOD_ROLE)
 async def shutdown(ctx: Context):
     # works with pterodactyl?
     print('Received shutdown order')
