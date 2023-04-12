@@ -3,14 +3,15 @@
 import asyncio
 import datetime
 import json
+import logging
 import os
 import random
 import sys
 import textwrap
 from io import BytesIO
-from urllib.parse import quote_plus
-from typing import Optional, Union
 from pathlib import Path
+from typing import Optional, Union
+from urllib.parse import quote_plus
 
 import aiohttp
 import aiosqlite
@@ -32,8 +33,6 @@ BIRTHDAY = False
 CLOCK = True
 FISHGAMINGWEDNESDAY = True
 WELCOME = True
-# todo partials
-# todo with typing
 FISH_TEXT_CHANNEL = 875297517351358474
 MOD_ROLE = 725356663850270821
 MEMBER_ROLE = 932977796492427276
@@ -46,7 +45,12 @@ SAD_CAT_EMOJI = discord.PartialEmoji.from_str('<:sad_cat:770191103310823426>')
 
 # order is very important
 # longest ones first
-COMMAND_PREFIX = ['random ', 'cmpc.', 'c.', '$', ]  # space is needed
+COMMAND_PREFIX = [
+    'random ',
+    'cmpc.',
+    'c.',
+    '$',
+]  # space is needed
 
 PathLike = Union[str, Path]
 
@@ -56,7 +60,7 @@ def config_object_hook(obj: dict, fp: PathLike = 'config.template.json') -> dict
         template: dict = json.load(file)
     if not isinstance(template, dict):
         raise TypeError(f'template: Expected dict, got {type(template)}')
-    # todo more efficient?
+    # make this more efficient when I move it to its own library
     for key in obj.keys():
         if key not in template:
             raise ValueError(f'Unexpected key: {key}')
@@ -95,7 +99,6 @@ class CmpcDidThis(commands.Bot):
         super().__init__(*args, **kwargs)
 
     async def setup_hook(self):
-        print('Connecting to discord...')
         self.conn = await aiosqlite.connect('db.sqlite3')
         await self.conn.execute(
             """
@@ -114,6 +117,8 @@ class CmpcDidThis(commands.Bot):
         if FISHGAMINGWEDNESDAY:
             self.fish.start()
 
+        print('done')  # this line is needed to work with ptero
+
     async def on_ready(self):
         await self.change_presence(
             activity=discord.Activity(
@@ -121,11 +126,9 @@ class CmpcDidThis(commands.Bot):
             )
         )
         print(f'Connected to discord as: {self.user}')
-        print('done')  # this line is needed to work with ptero
 
     async def close(self):
         await super().close()
-        # todo typing
         for closeable in (self.conn, self.session):
             if closeable is not None:
                 await closeable.close()
@@ -300,44 +303,35 @@ class CmpcDidThisHelp(commands.DefaultHelpCommand):
     async def send_bot_help(self, mapping, /):
         ctx = self.context
         embed = Embed(title='cmpc did this commands', color=GREEN)
-        embed.add_field(
-            name='random word', value='gives you a random word', inline=False
+        pairs = (
+            ('random word', 'gives you a random word'),
+            ('random game', 'gives you a random game'),
+            ('random gif', 'gives you a random gif'),
+            ('random capybara', 'gives you a random capybara'),
+            (
+                'random gif {search term}',
+                'gives you a random gif that matches your search term example: random gif cat',
+            ),
         )
-        embed.add_field(
-            name='random game', value='gives you a random game', inline=False
-        )
-        embed.add_field(
-            name='random gif', value='gives you a random gif', inline=False
-        )
-        embed.add_field(
-            name='random capybara',
-            value='gives you a random capybara',
-            inline=False,
-        )
-        embed.add_field(
-            name='random gif {search term}',
-            value='gives you a random gif that matches your search term example: random gif cat',
-            inline=False,
-        )
+        for name, value in pairs:
+            embed.add_field(name=name, value=value, inline=False)
         await ctx.send(embed=embed)
 
 
-# todo typing
-def command_prefix(bot_, interaction) -> list[str]:
-    # needs fixing upstream
-    # lots of things do
-    prefices = COMMAND_PREFIX + commands.when_mentioned(bot_, interaction)
-    longest_prefix = max(len(p) for p in prefices)
-    start = interaction.content[:longest_prefix]
-    possible = start.casefold()
-    for prefix in prefices:
+def command_prefix(bot_: CmpcDidThis, message: discord.Message) -> list[str]:
+    prefix_lengths = {p: len(p) for p in COMMAND_PREFIX}
+    longest = max(prefix_lengths.values())
+    message_start = message.content[:longest]
+    possible = message_start.casefold()
+    for prefix, length in prefix_lengths.items():
         if possible.startswith(prefix):
-            return [start[:len(prefix)]]
-    prefix = [prefices[0]]
-    return prefix
+            return [message_start[:length]]
+    return commands.when_mentioned(bot_, message)
 
 
-bot = CmpcDidThis(command_prefix=command_prefix, intents=INTENTS, help_command=CmpcDidThisHelp())
+bot = CmpcDidThis(
+    command_prefix=command_prefix, intents=INTENTS, help_command=CmpcDidThisHelp()
+)
 
 
 @bot.hybrid_command(name='word')
@@ -346,7 +340,7 @@ async def random_word(ctx: Context):
 
 
 @bot.hybrid_command()
-@commands.is_owner()  # should be doable without parens...
+@commands.is_owner()
 async def say(ctx: Context, *, text: str):
     return await ctx.send(text)
 
@@ -359,14 +353,16 @@ async def testconn(ctx: Context):
 @bot.hybrid_command(name='game')
 async def random_game(ctx: Context):
     async with ctx.bot.session.get(
-            'https://store.steampowered.com/explore/random/'
+        'https://store.steampowered.com/explore/random/'
     ) as response:
         shorten = str(response.url).removesuffix('?snr=1_239_random_')
     await ctx.send(shorten)
 
 
 @bot.hybrid_command(name='number')
-async def random_number(ctx: Context, startnumber: Optional[int], endnumber: Optional[int]):
+async def random_number(
+    ctx: Context, startnumber: Optional[int], endnumber: Optional[int]
+):
     randomnumber = random.randint(startnumber, endnumber)
     await ctx.send(f'{randomnumber}')
 
@@ -390,8 +386,10 @@ async def random_gif(ctx: Context, *, search: Optional[str]):
 
     # https://developers.google.com/tenor/guides/endpoints
     # I love the new Google State!
-    search_random = 'https://tenor.googleapis.com/v2/search?key={}&q={}&random=true&limit=1'.format(
-        ctx.bot.config['tenor_token'], search
+    search_random = (
+        'https://tenor.googleapis.com/v2/search?key={}&q={}&random=true&limit=1'.format(
+            ctx.bot.config['tenor_token'], search
+        )
     )
     async with ctx.bot.session.get(search_random) as request:
         request.raise_for_status()
@@ -451,7 +449,6 @@ async def leaderboard(ctx: commands.Context, person: Optional[Member]):
 @commands.has_role(MOD_ROLE)
 async def shutdown(ctx: commands.Context, restart: bool = True):
     # works with pterodactyl
-    # todo file thingy# everytihings going to start working soon
     print('Received shutdown order')
     if restart:
         message = 'Restarting'
@@ -467,7 +464,8 @@ async def shutdown(ctx: commands.Context, restart: bool = True):
 
 
 def main():
-    bot.run(bot.config['discord_token'])
+    print('Connecting to discord...')
+    bot.run(bot.config['discord_token'], log_level=logging.WARNING)
 
 
 if __name__ == '__main__':
