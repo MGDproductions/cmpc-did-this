@@ -206,30 +206,6 @@ class CmpcDidThis(commands.Bot):
 
     async def on_message(self, message: Message):
         await self.process_profanity(message)
-
-        if message.content.startswith('cmpc.help'):
-            embed = Embed(title='cmpc did this commands', color=GREEN)
-            embed.add_field(
-                name='random word', value='gives you a random word', inline=False
-            )
-            embed.add_field(
-                name='random game', value='gives you a random game', inline=False
-            )
-            embed.add_field(
-                name='random gif', value='gives you a random gif', inline=False
-            )
-            embed.add_field(
-                name='random capybara',
-                value='gives you a random capybara',
-                inline=False,
-            )
-            embed.add_field(
-                name='random gif {search term}',
-                value='gives you a random gif that matches your search term example: random gif cat',
-                inline=False,
-            )
-            await message.channel.send(embed=embed)
-
         await self.process_commands(message)
 
     @tasks.loop(seconds=60)
@@ -320,6 +296,32 @@ class CmpcDidThis(commands.Bot):
                 fishgaming = False
 
 
+class CmpcDidThisHelp(commands.DefaultHelpCommand):
+    async def send_bot_help(self, mapping, /):
+        ctx = self.context
+        embed = Embed(title='cmpc did this commands', color=GREEN)
+        embed.add_field(
+            name='random word', value='gives you a random word', inline=False
+        )
+        embed.add_field(
+            name='random game', value='gives you a random game', inline=False
+        )
+        embed.add_field(
+            name='random gif', value='gives you a random gif', inline=False
+        )
+        embed.add_field(
+            name='random capybara',
+            value='gives you a random capybara',
+            inline=False,
+        )
+        embed.add_field(
+            name='random gif {search term}',
+            value='gives you a random gif that matches your search term example: random gif cat',
+            inline=False,
+        )
+        await ctx.send(embed=embed)
+
+
 # todo typing
 def command_prefix(bot_, interaction) -> list[str]:
     # needs fixing upstream
@@ -335,7 +337,7 @@ def command_prefix(bot_, interaction) -> list[str]:
     return prefix
 
 
-bot = CmpcDidThis(command_prefix=command_prefix, intents=INTENTS, help_command=None)
+bot = CmpcDidThis(command_prefix=command_prefix, intents=INTENTS, help_command=CmpcDidThisHelp())
 
 
 @bot.hybrid_command(name='word')
