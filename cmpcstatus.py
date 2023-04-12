@@ -359,79 +359,6 @@ bot = CmpcDidThis(
 )
 
 
-@bot.hybrid_command(name='word')
-async def random_word(ctx: Context):
-    """gives you a random word"""
-    return await ctx.send(random.choice(common_words))
-
-
-@bot.hybrid_command(hidden=True)
-@commands.is_owner()
-async def say(ctx: Context, *, text: str):
-    return await ctx.send(text)
-
-
-@bot.hybrid_command(hidden=True)
-async def testconn(ctx: Context):
-    return await ctx.send('hi there dude!')
-
-
-@bot.hybrid_command(name='game')
-async def random_game(ctx: Context):
-    """gives you a random game"""
-    async with ctx.bot.session.get(
-        'https://store.steampowered.com/explore/random/'
-    ) as response:
-        shorten = str(response.url).removesuffix('?snr=1_239_random_')
-    await ctx.send(shorten)
-
-
-@bot.hybrid_command(name='number')
-async def random_number(
-    ctx: Context, startnumber: Optional[int], endnumber: Optional[int]
-):
-    """gives you a random number"""
-    randomnumber = random.randint(startnumber, endnumber)
-    await ctx.send(f'{randomnumber}')
-
-
-@bot.hybrid_command(name='capybara', aliases=('capy',))
-async def capybara(ctx: Context):
-    """gives you a random capybara"""
-    async with ctx.typing():
-        async with ctx.bot.session.get('https://api.capy.lol/v1/capybara') as response:
-            fp = BytesIO(await response.content.read())
-        embed = Embed(title='capybara for u!', color=RED)
-        filename = 'capybara.png'
-        file = discord.File(fp, filename=filename)
-        embed.set_image(url=f'attachment://{filename}')
-    await ctx.send(embed=embed, file=file)
-
-
-@bot.hybrid_command(name='gif', aliases=('g',))
-async def random_gif(ctx: Context, *, search: Optional[str]):
-    """gives you a random gif"""
-    async with ctx.typing():
-        if search is None:
-            search = random.choice(common_words)
-        search = urllib.parse.quote_plus(search.encode(encoding='utf-8'))
-
-        # https://developers.google.com/tenor/guides/endpoints
-        # I love the new Google State!
-        search_url = (
-            'https://tenor.googleapis.com/v2/search?key={}&q={}&random=true&limit=1'
-        )
-        search_random = search_url.format(ctx.bot.config['tenor_token'], search)
-        async with ctx.bot.session.get(search_random) as request:
-            request.raise_for_status()
-            random_json = await request.json()
-        results = random_json['results']
-        gif = results[0]
-        url = gif['url']
-
-    await ctx.send(url)
-
-
 # lock bicking lawyer
 @bot.hybrid_command(aliases=('lbl',))
 async def leaderblame(ctx: Context, word: str):
@@ -478,6 +405,79 @@ async def leaderboard(ctx: Context, person: Optional[Member]):
     embed.set_footer(text=f'Total {total}', icon_url=thumb)
 
     await ctx.send(embed=embed)
+
+
+@bot.hybrid_command(name='capybara', aliases=('capy',))
+async def random_capybara(ctx: Context):
+    """gives you a random capybara"""
+    async with ctx.typing():
+        async with ctx.bot.session.get('https://api.capy.lol/v1/capybara') as response:
+            fp = BytesIO(await response.content.read())
+        embed = Embed(title='capybara for u!', color=RED)
+        filename = 'capybara.png'
+        file = discord.File(fp, filename=filename)
+        embed.set_image(url=f'attachment://{filename}')
+    await ctx.send(embed=embed, file=file)
+
+
+@bot.hybrid_command(name='game')
+async def random_game(ctx: Context):
+    """gives you a random game"""
+    async with ctx.bot.session.get(
+        'https://store.steampowered.com/explore/random/'
+    ) as response:
+        shorten = str(response.url).removesuffix('?snr=1_239_random_')
+    await ctx.send(shorten)
+
+
+@bot.hybrid_command(name='gif', aliases=('g',))
+async def random_gif(ctx: Context, *, search: Optional[str]):
+    """gives you a random gif"""
+    async with ctx.typing():
+        if search is None:
+            search = random.choice(common_words)
+        search = urllib.parse.quote_plus(search.encode(encoding='utf-8'))
+
+        # https://developers.google.com/tenor/guides/endpoints
+        # I love the new Google State!
+        search_url = (
+            'https://tenor.googleapis.com/v2/search?key={}&q={}&random=true&limit=1'
+        )
+        search_random = search_url.format(ctx.bot.config['tenor_token'], search)
+        async with ctx.bot.session.get(search_random) as request:
+            request.raise_for_status()
+            random_json = await request.json()
+        results = random_json['results']
+        gif = results[0]
+        url = gif['url']
+
+    await ctx.send(url)
+
+
+@bot.hybrid_command(name='number')
+async def random_number(
+    ctx: Context, startnumber: Optional[int], endnumber: Optional[int]
+):
+    """gives you a random number"""
+    randomnumber = random.randint(startnumber, endnumber)
+    await ctx.send(f'{randomnumber}')
+
+
+@bot.hybrid_command(name='word')
+async def random_word(ctx: Context):
+    """gives you a random word"""
+    return await ctx.send(random.choice(common_words))
+
+
+@bot.hybrid_command(hidden=True)
+@commands.is_owner()
+async def say(ctx: Context, *, text: str):
+    return await ctx.send(text)
+
+
+@bot.hybrid_command(hidden=True)
+async def testconn(ctx: Context):
+    return await ctx.send('hi there dude!')
 
 
 @bot.hybrid_command(hidden=True)
