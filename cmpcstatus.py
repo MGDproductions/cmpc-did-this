@@ -32,6 +32,8 @@ BIRTHDAY = False
 CLOCK = True
 FISHGAMINGWEDNESDAY = True
 WELCOME = True
+# todo partials
+# todo with typing
 FISH_TEXT_CHANNEL = 875297517351358474
 MOD_ROLE = 725356663850270821
 MEMBER_ROLE = 932977796492427276
@@ -336,23 +338,23 @@ def command_prefix(bot_, interaction) -> list[str]:
 bot = CmpcDidThis(command_prefix=command_prefix, intents=INTENTS, help_command=None)
 
 
-@bot.command(name='word')
+@bot.hybrid_command(name='word')
 async def random_word(ctx: Context):
     return await ctx.send(random.choice(common_words))
 
 
-@bot.command()
+@bot.hybrid_command()
 @commands.is_owner()  # should be doable without parens...
 async def say(ctx: Context, *, text: str):
     return await ctx.send(text)
 
 
-@bot.command()
+@bot.hybrid_command()
 async def testconn(ctx: Context):
     return await ctx.send('hi there dude!')
 
 
-@bot.command(name='game')
+@bot.hybrid_command(name='game')
 async def random_game(ctx: Context):
     async with ctx.bot.session.get(
             'https://store.steampowered.com/explore/random/'
@@ -361,13 +363,13 @@ async def random_game(ctx: Context):
     await ctx.send(shorten)
 
 
-@bot.command(name='number')
+@bot.hybrid_command(name='number')
 async def random_number(ctx: Context, startnumber: Optional[int], endnumber: Optional[int]):
     randomnumber = random.randint(startnumber, endnumber)
     await ctx.send(f'{randomnumber}')
 
 
-@bot.command(name='capybara', aliases=('capy',))
+@bot.hybrid_command(name='capybara', aliases=('capy',))
 async def capybara(ctx: Context):
     async with ctx.bot.session.get('https://api.capy.lol/v1/capybara') as response:
         img_bytes = BytesIO(await response.content.read())
@@ -378,7 +380,7 @@ async def capybara(ctx: Context):
     await ctx.send(file=file, embed=embed)
 
 
-@bot.command(name='gif', aliases=('g',))
+@bot.hybrid_command(name='gif', aliases=('g',))
 async def random_gif(ctx: Context, *, search: Optional[str]):
     if search is None:
         search = random.choice(common_words)
@@ -400,7 +402,7 @@ async def random_gif(ctx: Context, *, search: Optional[str]):
 
 
 # lock bicking lawyer
-@bot.command(aliases=('lbl',))
+@bot.hybrid_command(aliases=('lbl',))
 async def leaderblame(ctx: commands.Context, word: str):
     query = 'SELECT user, COUNT(*) AS num FROM lb WHERE word = ? GROUP BY user ORDER BY num DESC LIMIT 10;'
     arg = (word,)
@@ -418,7 +420,7 @@ async def leaderblame(ctx: commands.Context, word: str):
     await ctx.send(embed=embed)
 
 
-@bot.command(aliases=('lb',))
+@bot.hybrid_command(aliases=('lb',))
 async def leaderboard(ctx: commands.Context, person: Optional[Member]):
     # idk how this works but it sure does
     # or, in sql language:
@@ -443,7 +445,7 @@ async def leaderboard(ctx: commands.Context, person: Optional[Member]):
     await ctx.send(embed=embed)
 
 
-@bot.command(hidden=True)
+@bot.hybrid_command(hidden=True)
 @commands.has_role(MOD_ROLE)
 async def shutdown(ctx: commands.Context, restart: bool = True):
     # works with pterodactyl
