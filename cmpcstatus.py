@@ -6,10 +6,10 @@ import json
 import logging
 import random
 import sys
+import urllib.parse
 from io import BytesIO
 from pathlib import Path
 from typing import Optional, Union
-import urllib.parse
 from zoneinfo import ZoneInfo
 
 import aiohttp
@@ -93,7 +93,13 @@ class CmpcDidThis(commands.Bot):
         if CLOCK:
             self.tasks.append(self.clock)
         if FISHGAMINGWEDNESDAY:
-            self.tasks.extend((self.fgw_start, self.fgw_end, self.fgw_end_final,))
+            self.tasks.extend(
+                (
+                    self.fgw_start,
+                    self.fgw_end,
+                    self.fgw_end_final,
+                )
+            )
         super().__init__(*args, **kwargs)
 
     async def setup_hook(self):
@@ -176,9 +182,7 @@ class CmpcDidThis(commands.Bot):
             image = Image.open('assets/bg.png', formats=['PNG'])
             draw = ImageDraw.Draw(image)
             draw.font = ImageFont.truetype('assets/Berlin Sans FB Demi Bold.ttf', 40)
-            _, _, width, height = draw.textbbox(
-                (0, 0), text
-            )
+            _, _, width, height = draw.textbbox((0, 0), text)
             position = (
                 (image.width - width) / 2,
                 (image.height - height) / 2,
@@ -213,7 +217,11 @@ class CmpcDidThis(commands.Bot):
         await self.process_commands(message)
 
     @tasks.loop(
-        time=[datetime.time(hour=h, minute=m, tzinfo=AMSTERDAM) for m in range(0, 60, 10) for h in range(24)]
+        time=[
+            datetime.time(hour=h, minute=m, tzinfo=AMSTERDAM)
+            for m in range(0, 60, 10)
+            for h in range(24)
+        ]
     )
     async def clock(self):
         datetime_amsterdam = datetime.datetime.now(AMSTERDAM)
@@ -248,11 +256,12 @@ class CmpcDidThis(commands.Bot):
         await channel.set_permissions(
             channel.guild.default_role, overwrite=perms, reason='fgw_start'
         )
-        await channel.send(f'<@&{FISH_ROLE}>', file=discord.File('assets/fishgamingwednesday.mp4'))
+        await channel.send(
+            f'<@&{FISH_ROLE}>', file=discord.File('assets/fishgamingwednesday.mp4')
+        )
         print('fish gaming wednesday started')
 
-    @tasks.loop(seconds=30)
-    # @tasks.loop(time=datetime.time(hour=0, tzinfo=AMSTERDAM))
+    @tasks.loop(time=datetime.time(hour=0, tzinfo=AMSTERDAM))
     async def fgw_end(self):
         print('here')
         # only run on thursday (end of wednesday)
@@ -268,7 +277,9 @@ class CmpcDidThis(commands.Bot):
             create_private_threads=False,
             send_messages_in_threads=False,
         )
-        await channel.set_permissions(channel.guild.default_role, overwrite=perms, reason='fgw_end')
+        await channel.set_permissions(
+            channel.guild.default_role, overwrite=perms, reason='fgw_end'
+        )
 
         # create countdown message
         embed = Embed(title='Fish gaming wednesday has ended.', color=BLUE)
@@ -300,7 +311,9 @@ class CmpcDidThis(commands.Bot):
         # hide channel
         perms = channel.overwrites_for(channel.guild.default_role)
         perms.update(view_channel=False)
-        await channel.set_permissions(channel.guild.default_role, overwrite=perms, reason='fgw_end_final')
+        await channel.set_permissions(
+            channel.guild.default_role, overwrite=perms, reason='fgw_end_final'
+        )
 
 
 class CmpcDidThisHelp(commands.DefaultHelpCommand):
