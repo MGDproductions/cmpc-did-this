@@ -22,7 +22,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 from assets.words import common_words
 
-# config
+# CONSTANTS
 INTENTS = discord.Intents.default()
 INTENTS.members = True
 INTENTS.message_content = True
@@ -54,6 +54,7 @@ COMMAND_PREFIX = [
 ]
 
 
+# CONFIG
 def config_object_hook(obj: dict, fp: str = 'config.template.json') -> dict:
     with open(fp) as file:
         template: dict = json.load(file)
@@ -103,6 +104,7 @@ class CmpcDidThis(commands.Bot):
             )
         super().__init__(*args, **kwargs)
 
+    # SETUP
     async def setup_hook(self):
         self.session = aiohttp.ClientSession()
 
@@ -110,7 +112,8 @@ class CmpcDidThis(commands.Bot):
         await self.conn.execute(
             """
             CREATE TABLE IF NOT EXISTS lb (
-                time INTEGER NOT NULL,
+                id INTEGER NOT NULL PRIMARY KEY,
+                stamp REAL NOT NULL,
                 user INTEGER NOT NULL,
                 word TEXT NOT NULL
             );
@@ -146,7 +149,8 @@ class CmpcDidThis(commands.Bot):
             t.stop()
         print('Closed gracefully')
 
-    async def process_profanity(self, message: Message):
+    # EVENTS
+    async def process_profanity(self, message: Message) -> int:
         lower = message.content.casefold()
         mwords = lower.split()
         profanity_array = profanity_predict(mwords)
@@ -155,24 +159,25 @@ class CmpcDidThis(commands.Bot):
         for i, word in enumerate(mwords):
             if profanity_array[i] or word in profanity_intercept:
                 swears.append(word)
-
         if not swears:
-            return
+            return 0
 
         timestamp = message.created_at.timestamp()
-        user = message.author.id
         await self.conn.executemany(
-            'INSERT INTO lb (time, user, word) VALUES (?, ?, ?);',
+            'INSERT INTO lb (id, stamp, user, word) VALUES (?, ?, ?, ?);',
             (
                 (
+                    message.id,
                     timestamp,
-                    user,
+                    message.author.id,
                     word,
                 )
                 for word in swears
             ),
         )
         await self.conn.commit()
+
+        return len(swears)
 
     async def on_member_join(self, member: Member):
         role = utils.get(member.guild.roles, id=MEMBER_ROLE)
@@ -225,6 +230,7 @@ class CmpcDidThis(commands.Bot):
         await self.process_profanity(message)
         await self.process_commands(message)
 
+    # TASKS
     @tasks.loop(
         time=[
             datetime.time(hour=h, minute=m, tzinfo=AMSTERDAM)
@@ -324,6 +330,7 @@ class CmpcDidThis(commands.Bot):
         )
 
 
+# BOT SETUP
 class CmpcDidThisHelp(commands.DefaultHelpCommand):
     async def send_bot_help(self, mapping: dict, /):
         ctx = self.context
@@ -359,6 +366,23 @@ bot = CmpcDidThis(
 )
 
 
+@bot.hybrid_command(hidden=True)
+@commands.has_role(MOD_ROLE)
+async def backfill_database(ctx: Context, channel: discord.TextChannel):
+    await ctx.send('Loading history')
+    count = 0
+    swears = 0
+    ignored = 0
+    async for message in channel.history():
+        count += 1
+        try:
+            swears += await ctx.bot.process_profanity(message)
+        except aiosqlite.IntegrityError:
+            ignored += 1
+    await ctx.send(f'Messages {count} ignored {ignored} swears {swears}')
+
+
+# COMMANDS
 # lock bicking lawyer
 @bot.hybrid_command(aliases=('lbl',))
 async def leaderblame(ctx: Context, word: str):
@@ -481,7 +505,8 @@ async def testconn(ctx: Context):
 
 
 @bot.hybrid_command(hidden=True)
-@commands.has_role(MOD_ROLE)
+# @commands.has_role(MOD_ROLE)
+@commands.is_owner()
 async def shutdown(ctx: Context):
     # works with pterodactyl?
     print('Received shutdown order')
