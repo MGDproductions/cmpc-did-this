@@ -42,8 +42,7 @@ RED = discord.Color.red()
 BLUE = discord.Color.blue()
 SAD_CAT_EMOJI = discord.PartialEmoji.from_str('<:sad_cat:770191103310823426>')
 AMSTERDAM = ZoneInfo('Europe/Amsterdam')
-# order is very important
-# longest ones first
+WEDNESDAY = 3
 COMMAND_PREFIX = [
     'random ',  # space is needed
     'cmpc.',
@@ -90,9 +89,16 @@ class CmpcDidThis(commands.Bot):
         self.config = load_config()
         self.conn: Optional[aiosqlite.Connection] = None
         self.session: Optional[aiohttp.ClientSession] = None
+        self.tasks: list[tasks.Loop] = []
+        if CLOCK:
+            self.tasks.append(self.clock)
+        if FISHGAMINGWEDNESDAY:
+            self.tasks.extend((self.fgw_start, self.fgw_end, self.fgw_end_final,))
         super().__init__(*args, **kwargs)
 
     async def setup_hook(self):
+        self.session = aiohttp.ClientSession()
+
         self.conn = await aiosqlite.connect('db.sqlite3')
         await self.conn.execute(
             """
@@ -105,16 +111,12 @@ class CmpcDidThis(commands.Bot):
         )
         await self.conn.commit()
 
-        self.session = aiohttp.ClientSession()
-        if CLOCK:
-            self.clock.start()
-        if FISHGAMINGWEDNESDAY:
-            for task in (self.fgw_start, self.fgw_end, self.fgw_end_final):
-                task.start()
-
         print('done')  # this line is needed to work with ptero
 
     async def on_ready(self):
+        for t in self.tasks:
+            if not t.is_running():
+                t.start()
         await self.change_presence(
             activity=discord.Activity(
                 type=discord.ActivityType.watching, name='the cmpc discord'
@@ -127,8 +129,8 @@ class CmpcDidThis(commands.Bot):
         await super().close()
         await self.conn.close()
         await self.session.close()
-        for task in (self.clock, self.fgw_start, self.fgw_end, self.fgw_end_final):
-            task.stop()
+        for t in self.tasks:
+            t.stop()
         print('Closed gracefully')
 
     async def process_profanity(self, message: Message):
@@ -211,7 +213,7 @@ class CmpcDidThis(commands.Bot):
         await self.process_commands(message)
 
     @tasks.loop(
-        time=[datetime.time(minute=n, tzinfo=AMSTERDAM) for n in range(0, 60, 10)]
+        time=[datetime.time(hour=h, minute=m, tzinfo=AMSTERDAM) for m in range(0, 60, 10) for h in range(24)]
     )
     async def clock(self):
         datetime_amsterdam = datetime.datetime.now(AMSTERDAM)
@@ -223,15 +225,15 @@ class CmpcDidThis(commands.Bot):
 
     def wednesday_channel(self, *, day: int) -> Optional[discord.TextChannel]:
         datetime_amsterdam = datetime.datetime.now(AMSTERDAM)
-        if datetime_amsterdam.day != day:
+        if datetime_amsterdam.isoweekday() != day:
             return None
         else:
             return self.get_channel(FISH_TEXT_CHANNEL)
 
-    @tasks.loop(time=datetime.time(hour=0))
+    @tasks.loop(time=datetime.time(hour=0, tzinfo=AMSTERDAM))
     async def fgw_start(self):
         # only run on wednesday
-        channel = self.wednesday_channel(day=3)
+        channel = self.wednesday_channel(day=WEDNESDAY)
         if channel is None:
             return
 
@@ -246,13 +248,15 @@ class CmpcDidThis(commands.Bot):
         await channel.set_permissions(
             channel.guild.default_role, overwrite=perms, reason='fgw_start'
         )
-        await channel.send(f'<@&{FISH_ROLE}>', file=discord.File('fishgamingwednesday.mp4'))
+        await channel.send(f'<@&{FISH_ROLE}>', file=discord.File('assets/fishgamingwednesday.mp4'))
         print('fish gaming wednesday started')
 
-    @tasks.loop(time=datetime.time(hour=0))
+    @tasks.loop(seconds=30)
+    # @tasks.loop(time=datetime.time(hour=0, tzinfo=AMSTERDAM))
     async def fgw_end(self):
+        print('here')
         # only run on thursday (end of wednesday)
-        channel = self.wednesday_channel(day=4)
+        channel = self.wednesday_channel(day=WEDNESDAY + 1)
         if channel is None:
             return
 
@@ -264,45 +268,39 @@ class CmpcDidThis(commands.Bot):
             create_private_threads=False,
             send_messages_in_threads=False,
         )
-        await channel.set_permissions(channel.guild.default_role, overwrite=perms)
-
-        def countdown_text(n: int) -> str:
-            s = 's' if n != 1 else ''
-            return f'In {n}n minute{s} this channel will be hidden.'
+        await channel.set_permissions(channel.guild.default_role, overwrite=perms, reason='fgw_end')
 
         # create countdown message
         embed = Embed(title='Fish gaming wednesday has ended.', color=BLUE)
         filename = 'fgwends.png'
         embed.set_image(url=f'attachment://{filename}')
-        file = discord.File('fgwends.png', filename=f'assets/{filename}')
-        embed.add_field(
-            name=countdown_text(5),
-            value='** **',
-            inline=False,
-        )
+        file = discord.File(f'assets/{filename}', filename=f'{filename}')
         message = await channel.send(embed=embed, file=file)
 
         # edit message until countdown ends
+        embed.add_field(name='', value='')
         for i in range(5, 0, -1):
-            await asyncio.sleep(60)
-            embed.fields[0].name = countdown_text(i)
+            s = 's' if i != 1 else ''
+            name = f'In {i} minute{s} this channel will be hidden.'
+            embed.set_field_at(0, name=name, value='** **', inline=False)
             await message.edit(embed=embed)
+            await asyncio.sleep(60)
 
         # leave a final message
         embed.remove_field(0)
         await message.edit(embed=embed)
 
-    @tasks.loop(time=datetime.time(hour=0, minute=5))
+    @tasks.loop(time=datetime.time(hour=0, minute=5, tzinfo=AMSTERDAM))
     async def fgw_end_final(self):
         # only run on thursday (end of wednesday)
-        channel = self.wednesday_channel(day=4)
+        channel = self.wednesday_channel(day=WEDNESDAY + 1)
         if channel is None:
             return
 
         # hide channel
         perms = channel.overwrites_for(channel.guild.default_role)
         perms.update(view_channel=False)
-        await channel.set_permissions(channel.guild.default_role, overwrite=perms)
+        await channel.set_permissions(channel.guild.default_role, overwrite=perms, reason='fgw_end_final')
 
 
 class CmpcDidThisHelp(commands.DefaultHelpCommand):
@@ -428,13 +426,6 @@ async def leaderblame(ctx: Context, word: str):
     embed.set_footer(text=f'Total {total}', icon_url=thumb)
 
     await ctx.send(embed=embed)
-
-
-@bot.hybrid_command(hidden=True)
-@commands.has_role(MOD_ROLE)
-async def testjoin(ctx: Context, member: Member):
-    await ctx.send('test')
-    await bot.on_member_join(member)
 
 
 @bot.hybrid_command(aliases=('lb',))
