@@ -42,10 +42,19 @@ EGGYBOI_GUILD = 714154158969716780
 GREEN = discord.Color.green()
 RED = discord.Color.red()
 BLUE = discord.Color.blue()
-
 SAD_CAT_EMOJI = discord.PartialEmoji.from_str('<:sad_cat:770191103310823426>')
+
 AMSTERDAM = ZoneInfo('Europe/Amsterdam')
 WEDNESDAY = 3
+CLOCK_TIMES = [
+    datetime.time(hour=h, minute=m, tzinfo=AMSTERDAM)
+    for m in range(0, 60, 10)
+    for h in range(24)
+]
+FGW_START_TIME = datetime.time(hour=0, tzinfo=AMSTERDAM)
+FGW_END_TIME = datetime.time(hour=0, tzinfo=AMSTERDAM)
+FGW_HIDE_TIME = datetime.time(hour=0, minute=5, tzinfo=AMSTERDAM)
+
 COMMAND_PREFIX = [
     'random ',  # space is needed
     'cmpc.',
@@ -101,7 +110,7 @@ class CmpcDidThis(commands.Bot):
                 (
                     self.fgw_start,
                     self.fgw_end,
-                    self.fgw_end_final,
+                    self.fgw_hide,
                 )
             )
         super().__init__(*args, **kwargs)
@@ -233,11 +242,7 @@ class CmpcDidThis(commands.Bot):
 
     # TASKS
     @tasks.loop(
-        time=[
-            datetime.time(hour=h, minute=m, tzinfo=AMSTERDAM)
-            for m in range(0, 60, 10)
-            for h in range(24)
-        ]
+        time=CLOCK_TIMES
     )
     async def clock(self):
         datetime_amsterdam = datetime.datetime.now(AMSTERDAM)
@@ -253,7 +258,7 @@ class CmpcDidThis(commands.Bot):
         else:
             return self.get_channel(FISH_TEXT_CHANNEL)
 
-    @tasks.loop(time=datetime.time(hour=0, tzinfo=AMSTERDAM))
+    @tasks.loop(time=FGW_START_TIME)
     async def fgw_start(self):
         # only run on wednesday
         channel = self.wednesday_channel(day=WEDNESDAY)
@@ -273,7 +278,7 @@ class CmpcDidThis(commands.Bot):
         )
         print('fish gaming wednesday started')
 
-    @tasks.loop(time=datetime.time(hour=0, tzinfo=AMSTERDAM))
+    @tasks.loop(time=FGW_END_TIME)
     async def fgw_end(self):
         print('here')
         # only run on thursday (end of wednesday)
@@ -310,8 +315,8 @@ class CmpcDidThis(commands.Bot):
         embed.remove_field(0)
         await message.edit(embed=embed)
 
-    @tasks.loop(time=datetime.time(hour=0, minute=5, tzinfo=AMSTERDAM))
-    async def fgw_end_final(self):
+    @tasks.loop(time=FGW_HIDE_TIME)
+    async def fgw_hide(self):
         # only run on thursday (end of wednesday)
         channel = self.wednesday_channel(day=WEDNESDAY + 1)
         if channel is None:
