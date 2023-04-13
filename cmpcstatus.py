@@ -46,6 +46,7 @@ SAD_CAT_EMOJI = discord.PartialEmoji.from_str('<:sad_cat:770191103310823426>')
 
 AMSTERDAM = ZoneInfo('Europe/Amsterdam')
 WEDNESDAY = 3
+THURSDAY = 4
 CLOCK_TIMES = [
     datetime.time(hour=h, minute=m, tzinfo=AMSTERDAM)
     for m in range(0, 60, 10)
@@ -54,6 +55,8 @@ CLOCK_TIMES = [
 FGW_START_TIME = datetime.time(hour=0, tzinfo=AMSTERDAM)
 FGW_END_TIME = datetime.time(hour=0, tzinfo=AMSTERDAM)
 FGW_HIDE_TIME = datetime.time(hour=0, minute=5, tzinfo=AMSTERDAM)
+# how many seconds in a minute
+COUNTDOWN_MINUTE = 60
 
 COMMAND_PREFIX = [
     'random ',  # space is needed
@@ -253,7 +256,9 @@ class CmpcDidThis(commands.Bot):
 
     def wednesday_channel(self, *, day: int) -> Optional[discord.TextChannel]:
         datetime_amsterdam = datetime.datetime.now(AMSTERDAM)
+        print(f'wednesday check: {datetime_amsterdam}')
         if datetime_amsterdam.isoweekday() != day:
+            print('Not doing fgw routine')
             return None
         else:
             return self.get_channel(FISH_TEXT_CHANNEL)
@@ -282,7 +287,7 @@ class CmpcDidThis(commands.Bot):
     async def fgw_end(self):
         print('here')
         # only run on thursday (end of wednesday)
-        channel = self.wednesday_channel(day=WEDNESDAY + 1)
+        channel = self.wednesday_channel(day=THURSDAY)
         if channel is None:
             return
 
@@ -309,7 +314,7 @@ class CmpcDidThis(commands.Bot):
             name = f'In {i} minute{s} this channel will be hidden.'
             embed.set_field_at(0, name=name, value='** **', inline=False)
             await message.edit(embed=embed)
-            await asyncio.sleep(60)
+            await asyncio.sleep(COUNTDOWN_MINUTE)
 
         # leave a final message
         embed.remove_field(0)
@@ -318,7 +323,7 @@ class CmpcDidThis(commands.Bot):
     @tasks.loop(time=FGW_HIDE_TIME)
     async def fgw_hide(self):
         # only run on thursday (end of wednesday)
-        channel = self.wednesday_channel(day=WEDNESDAY + 1)
+        channel = self.wednesday_channel(day=THURSDAY)
         if channel is None:
             return
 
