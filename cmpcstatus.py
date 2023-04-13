@@ -126,10 +126,12 @@ class CmpcDidThis(commands.Bot):
         await self.conn.execute(
             """
             CREATE TABLE IF NOT EXISTS lb (
-                id INTEGER NOT NULL PRIMARY KEY,
-                stamp REAL NOT NULL,
-                user INTEGER NOT NULL,
-                word TEXT NOT NULL
+                message_id INTEGER NOT NULL,
+                created_at REAL NOT NULL,
+                author_id INTEGER NOT NULL,
+                word TEXT NOT NULL,
+                position INTEGER NOT NULL,
+                PRIMARY KEY (message_id, position)
             );
             """
         )
@@ -168,24 +170,25 @@ class CmpcDidThis(commands.Bot):
         lower = message.content.casefold()
         mwords = lower.split()
         profanity_array = profanity_predict(mwords)
-        swears = []
-        for word, profane in zip(mwords, profanity_array):
-            if profane:
-                swears.append(word)
+        swears = {i: word for i, word in enumerate(mwords) if profanity_array[i]}
         if not swears:
             return 0
 
         timestamp = message.created_at.timestamp()
         await self.conn.executemany(
-            'INSERT INTO lb (id, stamp, user, word) VALUES (?, ?, ?, ?);',
+            """
+            INSERT INTO lb (message_id, created_at, author_id, word, position)
+            VALUES (:message_id, :created_at, :author_id, :word, :position);
+            """,
             (
-                (
-                    message.id,
-                    timestamp,
-                    message.author.id,
-                    word,
-                )
-                for word in swears
+                {
+                    'message_id': message.id,
+                    'created_at': timestamp,
+                    'author_id': message.author.id,
+                    'word': word,
+                    'position': position,
+                }
+                for position, word in swears.items()
             ),
         )
         await self.conn.commit()
@@ -244,9 +247,7 @@ class CmpcDidThis(commands.Bot):
         await self.process_commands(message)
 
     # TASKS
-    @tasks.loop(
-        time=CLOCK_TIMES
-    )
+    @tasks.loop(time=CLOCK_TIMES)
     async def clock(self):
         datetime_amsterdam = datetime.datetime.now(AMSTERDAM)
         ams_time = datetime_amsterdam.strftime('cmpc: %H:%M')
@@ -322,7 +323,6 @@ class CmpcDidThis(commands.Bot):
 
     @tasks.loop(time=FGW_HIDE_TIME)
     async def fgw_hide(self):
-        # only run on thursday (end of wednesday)
         channel = self.wednesday_channel(day=THURSDAY)
         if channel is None:
             return
@@ -409,8 +409,13 @@ class ProfanityConverter(commands.Converter[str]):
 async def leaderblame(ctx: Context, word: ProfanityConverter):
     """whodunnit?"""
 
-    query = 'SELECT user, COUNT(*) AS num FROM lb WHERE word = ? GROUP BY user ORDER BY num DESC LIMIT 10;'
-    arg = (word,)
+    query = """
+            SELECT author_id, COUNT(*) AS num FROM lb 
+            WHERE word=:word 
+            GROUP BY author_id ORDER BY num DESC
+            LIMIT 10;
+            """
+    arg = {'word': word}
     thumb = None
     title = word
     async with ctx.bot.conn.execute_fetchall(query, arg) as rows:
@@ -434,12 +439,21 @@ async def leaderboard(ctx: Context, person: Optional[Member]):
     # or, in sql language:
     # IDK HOW this, WORKS BUT (it) SURE DOES
     if person is not None:
-        query = 'SELECT word, COUNT(*) AS num FROM lb WHERE user = ? GROUP BY word ORDER BY num DESC LIMIT 10;'
-        arg = (person.id,)
+        query = """
+                SELECT word, COUNT(*) AS num FROM lb
+                WHERE author_id=:author_id
+                GROUP BY word ORDER BY num DESC
+                LIMIT 10;
+                """
+        arg = {'author_id': person.id}
         thumb = person.avatar.url
         title = person.name
     else:
-        query = 'SELECT word, COUNT(*) AS num FROM lb GROUP BY word ORDER BY num DESC LIMIT 10;'
+        query = """
+                SELECT word, COUNT(*) AS num FROM lb
+                GROUP BY word ORDER BY num DESC
+                LIMIT 10;
+                """
         arg = ()
         thumb = ctx.guild.icon.url
         title = ctx.guild.name
