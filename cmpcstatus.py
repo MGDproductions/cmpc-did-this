@@ -66,6 +66,11 @@ COMMAND_PREFIX = [
 ]
 
 
+log = logging.getLogger(__name__)
+log.addHandler(logging.StreamHandler(sys.stdout))
+log.setLevel(logging.INFO)
+
+
 # CONFIG
 def config_object_hook(obj: dict, fp: str = 'config.template.json') -> dict:
     with open(fp) as file:
@@ -98,6 +103,16 @@ def profanity_predict(words: list[str]) -> list[bool]:
         (x in profanity_intercept or profanity.contains_profanity(x)) for x in words
     ]
     return profanity_array
+
+
+async def tags(message: Message):
+    t = message.content.casefold()
+    for k, v in {
+        'el muchacho': 'https://youtu.be/GdtuG-j9Xog',
+        'make that the cat wise': 'https://cdn.discordapp.com/attachments/736664393630220289/1098942081248010300/image.png',
+    }.items():
+        if k == t:
+            await message.channel.send(v)
 
 
 class CmpcDidThis(commands.Bot):
@@ -154,16 +169,16 @@ class CmpcDidThis(commands.Bot):
                 type=discord.ActivityType.watching, name='the cmpc discord'
             )
         )
-        print(f'Connected to discord as: {self.user}')
+        log.info(f'Connected to discord as: %s', self.user)
 
     async def close(self):
-        print('Closing bot instance')
+        log.info('Closing bot instance')
         await super().close()
         await self.conn.close()
         await self.session.close()
         for t in self.tasks:
             t.stop()
-        print('Closed gracefully')
+        log.info('Closed gracefully')
 
     # EVENTS
     async def process_profanity(self, message: Message) -> int:
@@ -202,8 +217,7 @@ class CmpcDidThis(commands.Bot):
         if not WELCOME:
             return
         name = member.name
-        welcome_message = f'{name} joined'
-        print(welcome_message)
+        log.info('%s joined', name)
 
         channel = self.get_channel(GENERAL_CHANNEL)
         async with channel.typing():
@@ -232,17 +246,19 @@ class CmpcDidThis(commands.Bot):
             image.save(fp, 'PNG')
             fp.seek(0)
             file = discord.File(fp, filename=filename)
-            embed = Embed(title=welcome_message, color=RED)
+            embed = Embed(title=f'{name} joined', color=RED)
             embed.set_image(url=f'attachment://{filename}')
             await channel.send(content=member.mention, file=file, embed=embed)
 
-    async def on_member_remove(self, member):
+    async def on_member_remove(self, member: Member):
+        log.info('%s left', member.name)
         channel = self.get_channel(GENERAL_CHANNEL)
         await channel.send(
             f'{SAD_CAT_EMOJI} *** {member.name} *** left the eggyboi family {SAD_CAT_EMOJI}'
         )
 
     async def on_message(self, message: Message):
+        await tags(message)
         await self.process_profanity(message)
         await self.process_commands(message)
 
@@ -251,17 +267,18 @@ class CmpcDidThis(commands.Bot):
     async def clock(self):
         datetime_amsterdam = datetime.datetime.now(AMSTERDAM)
         ams_time = datetime_amsterdam.strftime('cmpc: %H:%M')
-        print(f'time for cmpc: {ams_time}')
+        log.debug(f'time for cmpc: %s', ams_time)
         channel = self.get_channel(CLOCK_VOICE_CHANNEL)
         await channel.edit(name=ams_time)
 
     def wednesday_channel(self, *, day: int) -> Optional[discord.TextChannel]:
         datetime_amsterdam = datetime.datetime.now(AMSTERDAM)
-        print(f'wednesday check: {datetime_amsterdam}')
+        log.info('day-of-week check %d : %s', day, datetime_amsterdam)
         if datetime_amsterdam.isoweekday() != day:
-            print('Not doing fgw routine')
+            log.info('Not doing fgw routine')
             return None
         else:
+            log.info('Doing fgw routine')
             return self.get_channel(FISH_TEXT_CHANNEL)
 
     @tasks.loop(time=FGW_START_TIME)
@@ -271,6 +288,7 @@ class CmpcDidThis(commands.Bot):
         if channel is None:
             return
 
+        log.info('fish gaming wednesday started')
         perms = channel.overwrites_for(channel.guild.default_role)
         perms.update(
             view_channel=True,
@@ -282,15 +300,15 @@ class CmpcDidThis(commands.Bot):
         await channel.send(
             f'<@&{FISH_ROLE}>', file=discord.File('assets/fishgamingwednesday.mp4')
         )
-        print('fish gaming wednesday started')
 
     @tasks.loop(time=FGW_END_TIME)
     async def fgw_end(self):
-        print('here')
         # only run on thursday (end of wednesday)
         channel = self.wednesday_channel(day=THURSDAY)
         if channel is None:
             return
+
+        log.info('fish gaming wednesday ending')
 
         # set channel to read-only
         perms = channel.overwrites_for(channel.guild.default_role)
@@ -326,6 +344,8 @@ class CmpcDidThis(commands.Bot):
         channel = self.wednesday_channel(day=THURSDAY)
         if channel is None:
             return
+
+        log.info('fish gaming wednesday ended')
 
         # hide channel
         perms = channel.overwrites_for(channel.guild.default_role)
@@ -542,16 +562,16 @@ async def testconn(ctx: Context):
 @commands.has_role(MOD_ROLE)
 async def shutdown(ctx: Context):
     # works with pterodactyl?
-    print('Received shutdown order')
+    log.info('Received shutdown order')
     await ctx.send('Shutting down')
     sys.exit()
 
 
 def main():
-    print('Connecting to discord...')
-    handler = logging.StreamHandler(sys.stdout)
-    formatter = logging.Formatter(logging.BASIC_FORMAT)
-    bot.run(bot.config['discord_token'], log_handler=handler, log_formatter=formatter)
+    log.info('Connecting to discord...')
+    # remove fancy ass shell colour that looks dumb in dark theme
+    bot_log_formatter = logging.Formatter(logging.BASIC_FORMAT)
+    bot.run(bot.config['discord_token'], log_formatter=bot_log_formatter)
 
 
 if __name__ == '__main__':
