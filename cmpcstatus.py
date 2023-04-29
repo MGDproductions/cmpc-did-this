@@ -392,27 +392,7 @@ bot = CmpcDidThis(
 )
 
 
-@bot.command(hidden=True)
-@commands.has_role(MOD_ROLE)
-async def backfill_database(
-    ctx: Context,
-    channel: discord.TextChannel,
-    limit: Optional[int],
-    around: Optional[Message],
-):
-    await ctx.send(f'Loading history {channel.mention}')
-    count = 0
-    swears = 0
-    ignored = 0
-    async for message in channel.history(limit=limit, around=around):
-        count += 1
-        try:
-            swears += await ctx.bot.process_profanity(message)
-        except aiosqlite.IntegrityError:
-            ignored += 1
-    await ctx.send(
-        f'Messages {count} ignored {ignored} swears {swears} in {channel.mention}'
-    )
+
 
 
 class ProfanityConverter(commands.Converter[str]):
@@ -549,14 +529,37 @@ async def random_word(ctx: Context):
 
 
 @bot.command(hidden=True)
+async def testconn(ctx: Context):
+    return await ctx.send('hi there dude!')
+
+
+@bot.command(hidden=True)
 @commands.is_owner()
 async def say(ctx: Context, *, text: str):
     return await ctx.send(text)
 
 
 @bot.command(hidden=True)
-async def testconn(ctx: Context):
-    return await ctx.send('hi there dude!')
+@commands.has_role(MOD_ROLE)
+async def backfill_database(
+    ctx: Context,
+    channel: discord.TextChannel,
+    limit: Optional[int],
+    around: Optional[Message],
+):
+    await ctx.send(f'Loading history {channel.mention}')
+    count = 0
+    swears = 0
+    ignored = 0
+    async for message in channel.history(limit=limit, around=around):
+        count += 1
+        try:
+            swears += await ctx.bot.process_profanity(message)
+        except aiosqlite.IntegrityError:
+            ignored += 1
+    await ctx.send(
+        f'Messages {count} ignored {ignored} swears {swears} in {channel.mention}'
+    )
 
 
 @bot.command(hidden=True)
