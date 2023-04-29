@@ -8,7 +8,7 @@ import random
 import sys
 import urllib.parse
 from io import BytesIO
-from typing import Optional
+from typing import Literal, Optional
 from zoneinfo import ZoneInfo
 
 import aiohttp
@@ -31,13 +31,13 @@ CLOCK = True
 FISHGAMINGWEDNESDAY = True
 WELCOME = True
 
-FISH_TEXT_CHANNEL = 875297517351358474
-MOD_ROLE = 725356663850270821
-MEMBER_ROLE = 932977796492427276
-FISH_ROLE = 875359516131209256
-GENERAL_CHANNEL = 714154159590473801
 CLOCK_VOICE_CHANNEL = 753467367966638100
+FISH_TEXT_CHANNEL = 875297517351358474
+GENERAL_TEXT_CHANNEL = 714154159590473801
 EGGYBOI_GUILD = 714154158969716780
+FISH_ROLE = 875359516131209256
+MEMBER_ROLE = 932977796492427276
+MOD_ROLE = 725356663850270821
 
 GREEN = discord.Color.green()
 RED = discord.Color.red()
@@ -109,7 +109,8 @@ async def tags(message: Message):
     t = message.content.casefold()
     for k, v in {
         'el muchacho': 'https://youtu.be/GdtuG-j9Xog',
-        'make that the cat wise': 'https://cdn.discordapp.com/attachments/736664393630220289/1098942081248010300/image.png',
+        'make that the cat wise': 'https://cdn.discordapp.com/attachments/'
+        '736664393630220289/1098942081248010300/image.png',
     }.items():
         if k == t:
             await message.channel.send(v)
@@ -219,7 +220,7 @@ class CmpcDidThis(commands.Bot):
         name = member.name
         log.info('%s joined', name)
 
-        channel = self.get_channel(GENERAL_CHANNEL)
+        channel = self.get_channel(GENERAL_TEXT_CHANNEL)
         async with channel.typing():
             # create image
             newline = '\n' if len(name) > 10 else ' '
@@ -252,7 +253,7 @@ class CmpcDidThis(commands.Bot):
 
     async def on_member_remove(self, member: Member):
         log.info('%s left', member.name)
-        channel = self.get_channel(GENERAL_CHANNEL)
+        channel = self.get_channel(GENERAL_TEXT_CHANNEL)
         await channel.send(
             f'{SAD_CAT_EMOJI} *** {member.name} *** left the eggyboi family {SAD_CAT_EMOJI}'
         )
@@ -430,8 +431,8 @@ async def leaderblame(ctx: Context, word: ProfanityConverter):
     """whodunnit?"""
 
     query = """
-            SELECT author_id, COUNT(*) AS num FROM lb 
-            WHERE word=:word 
+            SELECT author_id, COUNT(*) AS num FROM lb
+            WHERE word=:word
             GROUP BY author_id ORDER BY num DESC
             LIMIT 10;
             """
@@ -565,6 +566,20 @@ async def shutdown(ctx: Context):
     log.info('Received shutdown order')
     await ctx.send('Shutting down')
     sys.exit()
+
+
+@bot.command(hidden=True)
+@commands.has_role(MOD_ROLE)
+async def test_event(
+    ctx: Context, member: Optional[Member], event: Literal['join', 'remove'] = 'join'
+):
+    log.info('Test event (%s) %s', member, event)
+    events = {
+        'join': bot.on_member_join,
+        'remove': bot.on_member_remove,
+    }
+    member = member or ctx.author
+    await events[event](member)
 
 
 def main():
