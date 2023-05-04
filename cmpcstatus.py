@@ -392,9 +392,6 @@ bot = CmpcDidThis(
 )
 
 
-
-
-
 class ProfanityConverter(commands.Converter[str]):
     async def convert(self, ctx: Context, argument: str) -> str:
         word = argument.casefold()
@@ -560,6 +557,13 @@ async def backfill_database(
     await ctx.send(
         f'Messages {count} ignored {ignored} swears {swears} in {channel.mention}'
     )
+
+
+# @bot.command(hidden=True)
+# @commands.has_role(MOD_ROLE)
+# async def hide(ctx: Context, *, invocation):
+#     message = ctx.
+#     return await bot.process_commands()
 
 
 @bot.command(hidden=True)
