@@ -559,6 +559,13 @@ async def backfill_database(
     )
 
 
+@bot.command(hidden=True)
+@commands.has_role(MOD_ROLE)
+async def backfill_multiple(ctx: Context, *channels: discord.TextChannel):
+    for c in channels:
+        await ctx.invoke(backfill_database, channel=c, limit=None, around=None)
+
+
 # @bot.command(hidden=True)
 # @commands.has_role(MOD_ROLE)
 # async def hide(ctx: Context, *, invocation):
