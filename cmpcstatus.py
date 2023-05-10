@@ -42,9 +42,9 @@ MOD_ROLE = 725356663850270821
 GREEN = discord.Color.green()
 RED = discord.Color.red()
 BLUE = discord.Color.blue()
-SAD_CAT_EMOJI = discord.PartialEmoji.from_str('<:sad_cat:770191103310823426>')
+SAD_CAT_EMOJI = discord.PartialEmoji.from_str("<:sad_cat:770191103310823426>")
 
-AMSTERDAM = ZoneInfo('Europe/Amsterdam')
+AMSTERDAM = ZoneInfo("Europe/Amsterdam")
 WEDNESDAY = 3
 THURSDAY = 4
 CLOCK_TIMES = [
@@ -59,10 +59,10 @@ FGW_HIDE_TIME = datetime.time(hour=0, minute=5, tzinfo=AMSTERDAM)
 COUNTDOWN_MINUTE = 60
 
 COMMAND_PREFIX = [
-    'random ',  # space is needed
-    'cmpc.',
-    'c.',
-    '$',
+    "random ",  # space is needed
+    "cmpc.",
+    "c.",
+    "$",
 ]
 
 
@@ -72,28 +72,28 @@ log.setLevel(logging.INFO)
 
 
 # CONFIG
-def config_object_hook(obj: dict, fp: str = 'config.template.json') -> dict:
+def config_object_hook(obj: dict, fp: str = "config.template.json") -> dict:
     with open(fp) as file:
         template: dict = json.load(file)
     if not isinstance(template, dict):
-        raise TypeError(f'template: Expected dict, got {type(template)}')
+        raise TypeError(f"template: Expected dict, got {type(template)}")
     # make this more efficient when I move it to its own library
     # also add namedtuple or class?
     for key in obj.keys():
         if key not in template:
-            raise ValueError(f'Unexpected key: {key}')
+            raise ValueError(f"Unexpected key: {key}")
     for key in template.keys():
         if key not in obj:
-            raise ValueError(f'Missing key: {key}')
+            raise ValueError(f"Missing key: {key}")
     return obj
 
 
-def load_config(fp: str = 'config.json') -> dict:
+def load_config(fp: str = "config.json") -> dict:
     with open(fp) as file:
         return json.load(file, object_hook=config_object_hook)
 
 
-profanity_intercept = [':3']
+profanity_intercept = [":3"]
 profanity.load_censor_words()
 profanity.add_censor_words(profanity_intercept)
 
@@ -108,9 +108,9 @@ def profanity_predict(words: list[str]) -> list[bool]:
 async def tags(message: Message):
     t = message.content.casefold()
     for k, v in {
-        'el muchacho': 'https://youtu.be/GdtuG-j9Xog',
-        'make that the cat wise': 'https://cdn.discordapp.com/attachments/'
-        '736664393630220289/1098942081248010300/image.png',
+        "el muchacho": "https://youtu.be/GdtuG-j9Xog",
+        "make that the cat wise": "https://cdn.discordapp.com/attachments/"
+        "736664393630220289/1098942081248010300/image.png",
     }.items():
         if k == t:
             await message.channel.send(v)
@@ -138,7 +138,7 @@ class CmpcDidThis(commands.Bot):
     async def setup_hook(self):
         self.session = aiohttp.ClientSession()
 
-        self.conn = await aiosqlite.connect('db.sqlite3')
+        self.conn = await aiosqlite.connect("db.sqlite3")
         await self.conn.execute(
             """
             CREATE TABLE IF NOT EXISTS lb (
@@ -153,7 +153,7 @@ class CmpcDidThis(commands.Bot):
         )
         await self.conn.commit()
 
-        print('done')  # this line is needed to work with ptero
+        print("done")  # this line is needed to work with ptero
 
     async def on_ready(self):
         # start task loops
@@ -167,19 +167,19 @@ class CmpcDidThis(commands.Bot):
         # set activity
         await self.change_presence(
             activity=discord.Activity(
-                type=discord.ActivityType.watching, name='the cmpc discord'
+                type=discord.ActivityType.watching, name="the cmpc discord"
             )
         )
-        log.info(f'Connected to discord as: %s', self.user)
+        log.info(f"Connected to discord as: %s", self.user)
 
     async def close(self):
-        log.info('Closing bot instance')
+        log.info("Closing bot instance")
         await super().close()
         await self.conn.close()
         await self.session.close()
         for t in self.tasks:
             t.stop()
-        log.info('Closed gracefully')
+        log.info("Closed gracefully")
 
     # EVENTS
     async def process_profanity(self, message: Message) -> int:
@@ -198,11 +198,11 @@ class CmpcDidThis(commands.Bot):
             """,
             (
                 {
-                    'message_id': message.id,
-                    'created_at': timestamp,
-                    'author_id': message.author.id,
-                    'word': word,
-                    'position': position,
+                    "message_id": message.id,
+                    "created_at": timestamp,
+                    "author_id": message.author.id,
+                    "word": word,
+                    "position": position,
                 }
                 for position, word in swears.items()
             ),
@@ -218,16 +218,16 @@ class CmpcDidThis(commands.Bot):
         if not WELCOME:
             return
         name = member.name
-        log.info('%s joined', name)
+        log.info("%s joined", name)
 
         channel = self.get_channel(GENERAL_TEXT_CHANNEL)
         async with channel.typing():
             # create image
-            newline = '\n' if len(name) > 10 else ' '
-            text = f'Welcome!{newline}{name}'
-            image = Image.open('assets/bg.png', formats=['PNG'])
+            newline = "\n" if len(name) > 10 else " "
+            text = f"Welcome!{newline}{name}"
+            image = Image.open("assets/bg.png", formats=["PNG"])
             draw = ImageDraw.Draw(image)
-            draw.font = ImageFont.truetype('assets/Berlin Sans FB Demi Bold.ttf', 40)
+            draw.font = ImageFont.truetype("assets/Berlin Sans FB Demi Bold.ttf", 40)
             _, _, width, height = draw.textbbox((0, 0), text)
             position = (
                 (image.width - width) / 2,
@@ -236,26 +236,26 @@ class CmpcDidThis(commands.Bot):
             draw.text(
                 position,
                 text,
-                fill='white',
+                fill="white",
                 stroke_width=3,
-                stroke_fill='black',
+                stroke_fill="black",
             )
 
             # send image
-            filename = 'cmpcwelcome.png'
+            filename = "cmpcwelcome.png"
             fp = BytesIO()
-            image.save(fp, 'PNG')
+            image.save(fp, "PNG")
             fp.seek(0)
             file = discord.File(fp, filename=filename)
-            embed = Embed(title=f'{name} joined', color=RED)
-            embed.set_image(url=f'attachment://{filename}')
+            embed = Embed(title=f"{name} joined", color=RED)
+            embed.set_image(url=f"attachment://{filename}")
             await channel.send(content=member.mention, file=file, embed=embed)
 
     async def on_member_remove(self, member: Member):
-        log.info('%s left', member.name)
+        log.info("%s left", member.name)
         channel = self.get_channel(GENERAL_TEXT_CHANNEL)
         await channel.send(
-            f'{SAD_CAT_EMOJI} *** {member.name} *** left the eggyboi family {SAD_CAT_EMOJI}'
+            f"{SAD_CAT_EMOJI} *** {member.name} *** left the eggyboi family {SAD_CAT_EMOJI}"
         )
 
     async def on_message(self, message: Message):
@@ -267,19 +267,19 @@ class CmpcDidThis(commands.Bot):
     @tasks.loop(time=CLOCK_TIMES)
     async def clock(self):
         datetime_amsterdam = datetime.datetime.now(AMSTERDAM)
-        ams_time = datetime_amsterdam.strftime('cmpc: %H:%M')
-        log.debug(f'time for cmpc: %s', ams_time)
+        ams_time = datetime_amsterdam.strftime("cmpc: %H:%M")
+        log.debug(f"time for cmpc: %s", ams_time)
         channel = self.get_channel(CLOCK_VOICE_CHANNEL)
         await channel.edit(name=ams_time)
 
     def wednesday_channel(self, *, day: int) -> Optional[discord.TextChannel]:
         datetime_amsterdam = datetime.datetime.now(AMSTERDAM)
-        log.info('day-of-week check %d : %s', day, datetime_amsterdam)
+        log.info("day-of-week check %d : %s", day, datetime_amsterdam)
         if datetime_amsterdam.isoweekday() != day:
-            log.info('Not doing fgw routine')
+            log.info("Not doing fgw routine")
             return None
         else:
-            log.info('Doing fgw routine')
+            log.info("Doing fgw routine")
             return self.get_channel(FISH_TEXT_CHANNEL)
 
     @tasks.loop(time=FGW_START_TIME)
@@ -289,17 +289,17 @@ class CmpcDidThis(commands.Bot):
         if channel is None:
             return
 
-        log.info('fish gaming wednesday started')
+        log.info("fish gaming wednesday started")
         perms = channel.overwrites_for(channel.guild.default_role)
         perms.update(
             view_channel=True,
             send_messages=True,
         )
         await channel.set_permissions(
-            channel.guild.default_role, overwrite=perms, reason='fgw_start'
+            channel.guild.default_role, overwrite=perms, reason="fgw_start"
         )
         await channel.send(
-            f'<@&{FISH_ROLE}>', file=discord.File('assets/fishgamingwednesday.mp4')
+            f"<@&{FISH_ROLE}>", file=discord.File("assets/fishgamingwednesday.mp4")
         )
 
     @tasks.loop(time=FGW_END_TIME)
@@ -309,7 +309,7 @@ class CmpcDidThis(commands.Bot):
         if channel is None:
             return
 
-        log.info('fish gaming wednesday ending')
+        log.info("fish gaming wednesday ending")
 
         # set channel to read-only
         perms = channel.overwrites_for(channel.guild.default_role)
@@ -317,22 +317,22 @@ class CmpcDidThis(commands.Bot):
             send_messages=False,
         )
         await channel.set_permissions(
-            channel.guild.default_role, overwrite=perms, reason='fgw_end'
+            channel.guild.default_role, overwrite=perms, reason="fgw_end"
         )
 
         # create countdown message
-        embed = Embed(title='Fish gaming wednesday has ended.', color=BLUE)
-        filename = 'fgwends.png'
-        embed.set_image(url=f'attachment://{filename}')
-        file = discord.File(f'assets/{filename}', filename=f'{filename}')
+        embed = Embed(title="Fish gaming wednesday has ended.", color=BLUE)
+        filename = "fgwends.png"
+        embed.set_image(url=f"attachment://{filename}")
+        file = discord.File(f"assets/{filename}", filename=f"{filename}")
         message = await channel.send(embed=embed, file=file)
 
         # edit message until countdown ends
-        embed.add_field(name='', value='')
+        embed.add_field(name="", value="")
         for i in range(5, 0, -1):
-            s = 's' if i != 1 else ''
-            name = f'In {i} minute{s} this channel will be hidden.'
-            embed.set_field_at(0, name=name, value='** **', inline=False)
+            s = "s" if i != 1 else ""
+            name = f"In {i} minute{s} this channel will be hidden."
+            embed.set_field_at(0, name=name, value="** **", inline=False)
             await message.edit(embed=embed)
             await asyncio.sleep(COUNTDOWN_MINUTE)
 
@@ -346,13 +346,13 @@ class CmpcDidThis(commands.Bot):
         if channel is None:
             return
 
-        log.info('fish gaming wednesday ended')
+        log.info("fish gaming wednesday ended")
 
         # hide channel
         perms = channel.overwrites_for(channel.guild.default_role)
         perms.update(view_channel=False)
         await channel.set_permissions(
-            channel.guild.default_role, overwrite=perms, reason='fgw_end_final'
+            channel.guild.default_role, overwrite=perms, reason="fgw_end_final"
         )
 
 
@@ -360,15 +360,15 @@ class CmpcDidThis(commands.Bot):
 class CmpcDidThisHelp(commands.DefaultHelpCommand):
     async def send_bot_help(self, mapping: dict, /):
         ctx = self.context
-        embed = Embed(title='cmpc did this commands', color=GREEN)
+        embed = Embed(title="cmpc did this commands", color=GREEN)
         pairs = (
-            ('random word', 'gives you a random word'),
-            ('random game', 'gives you a random game'),
-            ('random gif', 'gives you a random gif'),
-            ('random capybara', 'gives you a random capybara'),
+            ("random word", "gives you a random word"),
+            ("random game", "gives you a random game"),
+            ("random gif", "gives you a random gif"),
+            ("random capybara", "gives you a random capybara"),
             (
-                'random gif {search term}',
-                'gives you a random gif that matches your search term example: random gif cat',
+                "random gif {search term}",
+                "gives you a random gif that matches your search term example: random gif cat",
             ),
         )
         for name, value in pairs:
@@ -397,13 +397,13 @@ class ProfanityConverter(commands.Converter[str]):
         word = argument.casefold()
         check = profanity_predict([word])[0]
         if not check:
-            raise commands.BadArgument('Not a swear! L boomer.')
+            raise commands.BadArgument("Not a swear! L boomer.")
         return word
 
 
 # COMMANDS
 # lock bicking lawyer
-@bot.hybrid_command(aliases=('lbl',))
+@bot.hybrid_command(aliases=("lbl",))
 async def leaderblame(ctx: Context, word: ProfanityConverter):
     """whodunnit?"""
 
@@ -413,7 +413,7 @@ async def leaderblame(ctx: Context, word: ProfanityConverter):
             GROUP BY author_id ORDER BY num DESC
             LIMIT 10;
             """
-    arg = {'word': word}
+    arg = {"word": word}
     thumb = None
     title = word
     async with ctx.bot.conn.execute_fetchall(query, arg) as rows:
@@ -422,16 +422,16 @@ async def leaderblame(ctx: Context, word: ProfanityConverter):
     content_list = []
     for r in rows:
         user = ctx.bot.get_user(r[0])
-        mention = '<@0>' if user is None else user.mention
-        content_list.append(f'{mention} ({r[1]})')
-    content = '\n'.join(content_list)
+        mention = "<@0>" if user is None else user.mention
+        content_list.append(f"{mention} ({r[1]})")
+    content = "\n".join(content_list)
     embed = Embed(title=title, description=content)
-    embed.set_footer(text=f'Total {total}', icon_url=thumb)
+    embed.set_footer(text=f"Total {total}", icon_url=thumb)
 
     await ctx.send(embed=embed)
 
 
-@bot.hybrid_command(aliases=('lb',))
+@bot.hybrid_command(aliases=("lb",))
 async def leaderboard(ctx: Context, person: Optional[Member]):
     # idk how this works but it sure does
     # or, in sql language:
@@ -443,7 +443,7 @@ async def leaderboard(ctx: Context, person: Optional[Member]):
                 GROUP BY word ORDER BY num DESC
                 LIMIT 10;
                 """
-        arg = {'author_id': person.id}
+        arg = {"author_id": person.id}
         thumb = person.avatar.url
         title = person.name
     else:
@@ -458,68 +458,68 @@ async def leaderboard(ctx: Context, person: Optional[Member]):
 
     async with ctx.bot.conn.execute_fetchall(query, arg) as rows:
         total = sum(r[1] for r in rows)
-        content = '\n'.join(f'{r[0]} ({r[1]})' for r in rows)
+        content = "\n".join(f"{r[0]} ({r[1]})" for r in rows)
     embed = Embed(title=title, description=content)
-    embed.set_footer(text=f'Total {total}', icon_url=thumb)
+    embed.set_footer(text=f"Total {total}", icon_url=thumb)
 
     await ctx.send(embed=embed)
 
 
-@bot.hybrid_command(name='capybara', aliases=('capy',))
+@bot.hybrid_command(name="capybara", aliases=("capy",))
 async def random_capybara(ctx: Context):
     """gives you a random capybara"""
     async with ctx.typing():
-        async with ctx.bot.session.get('https://api.capy.lol/v1/capybara') as response:
+        async with ctx.bot.session.get("https://api.capy.lol/v1/capybara") as response:
             fp = BytesIO(await response.content.read())
-        embed = Embed(title='capybara for u!', color=RED)
-        filename = 'capybara.png'
+        embed = Embed(title="capybara for u!", color=RED)
+        filename = "capybara.png"
         file = discord.File(fp, filename=filename)
-        embed.set_image(url=f'attachment://{filename}')
+        embed.set_image(url=f"attachment://{filename}")
     await ctx.send(embed=embed, file=file)
 
 
-@bot.hybrid_command(name='game')
+@bot.hybrid_command(name="game")
 async def random_game(ctx: Context):
     """gives you a random game"""
     async with ctx.bot.session.get(
-        'https://store.steampowered.com/explore/random/'
+        "https://store.steampowered.com/explore/random/"
     ) as response:
-        shorten = str(response.url).removesuffix('?snr=1_239_random_')
+        shorten = str(response.url).removesuffix("?snr=1_239_random_")
     await ctx.send(shorten)
 
 
-@bot.hybrid_command(name='gif', aliases=('g',))
+@bot.hybrid_command(name="gif", aliases=("g",))
 async def random_gif(ctx: Context, *, search: Optional[str]):
     """gives you a random gif"""
     async with ctx.typing():
         if search is None:
             search = random.choice(common_words)
-        search = urllib.parse.quote_plus(search.encode(encoding='utf-8'))
+        search = urllib.parse.quote_plus(search.encode(encoding="utf-8"))
 
         # https://developers.google.com/tenor/guides/endpoints
         # I love the new Google State!
         search_url = (
-            'https://tenor.googleapis.com/v2/search?key={}&q={}&random=true&limit=1'
+            "https://tenor.googleapis.com/v2/search?key={}&q={}&random=true&limit=1"
         )
-        search_random = search_url.format(ctx.bot.config['tenor_token'], search)
+        search_random = search_url.format(ctx.bot.config["tenor_token"], search)
         async with ctx.bot.session.get(search_random) as request:
             request.raise_for_status()
             random_json = await request.json()
-        results = random_json['results']
+        results = random_json["results"]
         gif = results[0]
-        url = gif['url']
+        url = gif["url"]
 
     await ctx.send(url)
 
 
-@bot.hybrid_command(name='number')
+@bot.hybrid_command(name="number")
 async def random_number(ctx: Context, startnumber: int, endnumber: int):
     """gives you a random number"""
     randomnumber = random.randint(startnumber, endnumber)
-    await ctx.send(f'{randomnumber}')
+    await ctx.send(f"{randomnumber}")
 
 
-@bot.hybrid_command(name='word')
+@bot.hybrid_command(name="word")
 async def random_word(ctx: Context):
     """gives you a random word"""
     return await ctx.send(random.choice(common_words))
@@ -527,7 +527,7 @@ async def random_word(ctx: Context):
 
 @bot.command(hidden=True)
 async def testconn(ctx: Context):
-    return await ctx.send('hi there dude!')
+    return await ctx.send("hi there dude!")
 
 
 @bot.command(hidden=True)
@@ -544,7 +544,7 @@ async def backfill_database(
     limit: Optional[int],
     around: Optional[Message],
 ):
-    await ctx.send(f'Loading history {channel.mention}')
+    await ctx.send(f"Loading history {channel.mention}")
     count = 0
     swears = 0
     ignored = 0
@@ -555,7 +555,7 @@ async def backfill_database(
         except aiosqlite.IntegrityError:
             ignored += 1
     await ctx.send(
-        f'Messages {count} ignored {ignored} swears {swears} in {channel.mention}'
+        f"Messages {count} ignored {ignored} swears {swears} in {channel.mention}"
     )
 
 
@@ -577,31 +577,31 @@ async def backfill_multiple(ctx: Context, *channels: discord.TextChannel):
 @commands.has_role(MOD_ROLE)
 async def shutdown(ctx: Context):
     # works with pterodactyl?
-    log.info('Received shutdown order')
-    await ctx.send('Shutting down')
+    log.info("Received shutdown order")
+    await ctx.send("Shutting down")
     sys.exit()
 
 
 @bot.command(hidden=True)
 @commands.has_role(MOD_ROLE)
 async def test_event(
-    ctx: Context, member: Optional[Member], event: Literal['join', 'remove'] = 'join'
+    ctx: Context, member: Optional[Member], event: Literal["join", "remove"] = "join"
 ):
-    log.info('Test event (%s) %s', member, event)
+    log.info("Test event (%s) %s", member, event)
     events = {
-        'join': bot.on_member_join,
-        'remove': bot.on_member_remove,
+        "join": bot.on_member_join,
+        "remove": bot.on_member_remove,
     }
     member = member or ctx.author
     await events[event](member)
 
 
 def main():
-    log.info('Connecting to discord...')
+    log.info("Connecting to discord...")
     # remove fancy ass shell colour that looks dumb in dark theme
     bot_log_formatter = logging.Formatter(logging.BASIC_FORMAT)
-    bot.run(bot.config['discord_token'], log_formatter=bot_log_formatter)
+    bot.run(bot.config["discord_token"], log_formatter=bot_log_formatter)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
