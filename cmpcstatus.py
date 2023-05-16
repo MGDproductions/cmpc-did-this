@@ -417,6 +417,8 @@ async def leaderblame(ctx: Context, word: ProfanityConverter):
     thumb = None
     title = word
     async with ctx.bot.conn.execute_fetchall(query, arg) as rows:
+        # todo: complete total, not just limit 10
+        #       fix for main leaderboard command too
         total = sum(r[1] for r in rows)
 
     content_list = []
