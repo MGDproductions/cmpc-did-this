@@ -31,7 +31,8 @@ ENABLE_CLOCK = True
 ENABLE_FISH = True
 ENABLE_WELCOME = True
 
-DATABASE_PATH = "db.sqlite3"
+PATH_CONFIG = "config.json"
+PATH_DATABASE = "db.sqlite3"
 
 GUILD_EGGYBOI = 714154158969716780
 ROLE_DEVELOPER = 741317598452645949
@@ -76,25 +77,17 @@ log.setLevel(logging.INFO)
 
 
 # CONFIG
-def config_object_hook(obj: dict, fp: str = "config.template.json") -> dict:
-    with open(fp) as file:
-        template: dict = json.load(file)
-    if not isinstance(template, dict):
-        raise TypeError(f"template: Expected dict, got {type(template)}")
-    # make this more efficient when I move it to its own library
-    # also add namedtuple or class?
-    for key in obj.keys():
-        if key not in template:
-            raise ValueError(f"Unexpected key: {key}")
-    for key in template.keys():
-        if key not in obj:
-            raise ValueError(f"Missing key: {key}")
-    return obj
+class BotConfig:
+    def __init__(self, discord_token: str, tenor_token: str):
+        self.discord_token = discord_token
+        self.tenor_token = tenor_token
 
 
-def load_config(fp: str = "config.json") -> dict:
+def load_config(fp: str = PATH_CONFIG) -> BotConfig:
     with open(fp) as file:
-        return json.load(file, object_hook=config_object_hook)
+        obj = json.load(file)
+    config = BotConfig(discord_token=obj['discord_token'], tenor_token=obj['tenor_token'])
+    return config
 
 
 async def tags(message: Message):
@@ -308,7 +301,7 @@ class CmpcDidThis(commands.Bot):
 
 
 # BOT SETUP
-class CmpcDidThisHelp(commands.DefaultHelpCommand):
+class BotHelpCommand(commands.DefaultHelpCommand):
     async def send_bot_help(self, mapping: dict, /):
         ctx = self.context
         embed = Embed(title="cmpc did this commands", color=COLOUR_GREEN)
@@ -342,7 +335,7 @@ bot = CmpcDidThis(
     case_insensitive=True,
     command_prefix=command_prefix,
     intents=INTENTS,
-    help_command=CmpcDidThisHelp(),
+    help_command=BotHelpCommand(),
 )
 
 
@@ -356,7 +349,7 @@ class ProfanityLeaderboard(commands.Cog):
         profanity.add_censor_words(self.profanity_intercept)
 
     async def cog_load(self):
-        self.conn = await aiosqlite.connect(DATABASE_PATH)
+        self.conn = await aiosqlite.connect(PATH_DATABASE)
         await self.conn.execute(
             """
             CREATE TABLE IF NOT EXISTS lb (
@@ -552,7 +545,7 @@ async def random_gif(ctx: Context, *, search: Optional[str]):
         search_url = (
             "https://tenor.googleapis.com/v2/search?key={}&q={}&random=true&limit=1"
         )
-        search_random = search_url.format(ctx.bot.config["tenor_token"], search)
+        search_random = search_url.format(bot.config.tenor_token, search)
         async with ctx.bot.session.get(search_random) as request:
             request.raise_for_status()
             random_json = await request.json()
@@ -635,7 +628,7 @@ def main():
     log.info("Connecting to discord...")
     # remove fancy ass shell colour that looks dumb in dark theme
     bot_log_formatter = logging.Formatter(logging.BASIC_FORMAT)
-    bot.run(bot.config["discord_token"], log_formatter=bot_log_formatter)
+    bot.run(bot.config.discord_token, log_formatter=bot_log_formatter)
 
 
 if __name__ == "__main__":
