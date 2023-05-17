@@ -389,7 +389,7 @@ def command_prefix(bot_: CmpcDidThis, message: Message) -> list[str]:
 
 
 bot = CmpcDidThis(
-    command_prefix=command_prefix, intents=INTENTS, help_command=CmpcDidThisHelp()
+    case_insensitive=True, command_prefix=command_prefix, intents=INTENTS, help_command=CmpcDidThisHelp()
 )
 
 
@@ -539,8 +539,12 @@ async def say(ctx: Context, *, text: str):
     return await ctx.send(text)
 
 
-developer_commands = commands.Group()
-developer_commands.add_check(commands.has_role(ROLE_DEVELOPER))
+@bot.group(aliases=("dev",), case_insensitive=True, invoke_without_command=True)
+@commands.has_role(ROLE_DEVELOPER)
+async def developer_commands(ctx: Context):
+    dev_role = utils.get(ctx.guild.roles, id=ROLE_DEVELOPER)
+    mention_none = discord.AllowedMentions.none()
+    await ctx.send(f"{dev_role.mention} `<{dev_role.id}>`", allowed_mentions=mention_none)
 
 
 @developer_commands.command(hidden=True)
