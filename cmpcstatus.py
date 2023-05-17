@@ -2,10 +2,10 @@
 
 import asyncio
 import datetime
-import json
 import logging
 import random
 import sys
+import tomllib
 import urllib.parse
 from io import BytesIO
 from typing import Literal, Optional
@@ -31,7 +31,7 @@ ENABLE_CLOCK = True
 ENABLE_FISH = True
 ENABLE_WELCOME = True
 
-PATH_CONFIG = "config.json"
+PATH_CONFIG = "config.toml"
 PATH_DATABASE = "db.sqlite3"
 
 GUILD_EGGYBOI = 714154158969716780
@@ -86,8 +86,8 @@ class BotConfig:
 
 
 def load_config(fp: str = PATH_CONFIG) -> BotConfig:
-    with open(fp) as file:
-        obj = json.load(file)
+    with open(fp, "rb") as file:
+        obj = tomllib.load(file)
     config = BotConfig()
     for k, v in obj.items():
         setattr(config, k, v)
