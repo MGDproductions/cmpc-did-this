@@ -78,15 +78,19 @@ log.setLevel(logging.INFO)
 
 # CONFIG
 class BotConfig:
-    def __init__(self, discord_token: str, tenor_token: str):
-        self.discord_token = discord_token
-        self.tenor_token = tenor_token
+    discord_token: str
+    tenor_token: str
+    ptero_address: str
+    ptero_server_id: str
+    ptero_token: str
 
 
 def load_config(fp: str = PATH_CONFIG) -> BotConfig:
     with open(fp) as file:
         obj = json.load(file)
-    config = BotConfig(discord_token=obj['discord_token'], tenor_token=obj['tenor_token'])
+    config = BotConfig()
+    for k, v in obj.items():
+        setattr(config, k, v)
     return config
 
 
@@ -599,11 +603,17 @@ class DeveloperCommands(commands.Cog):
         return True
 
     @commands.command(hidden=True)
-    async def shutdown(self, ctx: Context):
-        # works with pterodactyl?
-        log.info("Received shutdown order")
-        await ctx.send("Shutting down")
-        sys.exit()
+    async def ptero(self, ctx: Context, signal: Literal["restart", "stop"] = "restart"):
+        # https://github.com/iamkubi/pydactyl/blob/main/pydactyl/api/client/servers/base.py#L78
+        message = f"Sending signal '{signal}'"
+        log.info(message)
+        await ctx.send(message)
+
+        url = f"{bot.config.ptero_address}/client/servers/{bot.config.ptero_server_id}/power"
+        payload = {"signal": signal}
+        headers = {"Authorization": f"Bearer {bot.config.ptero_token}"}
+        async with bot.session.post(url, json=payload, headers=headers) as response:
+            response.raise_for_status()
 
     @commands.command(hidden=True)
     async def test_event(
@@ -619,9 +629,6 @@ class DeveloperCommands(commands.Cog):
         }
         member = member or ctx.author
         await events[event](member)
-
-
-# todo use ptero library
 
 
 def main():
