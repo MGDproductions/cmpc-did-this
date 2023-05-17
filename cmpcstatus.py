@@ -70,6 +70,8 @@ COMMAND_PREFIX = [
     "$",
 ]
 
+PROFANITY_INTERCEPT = (":3",)
+
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.StreamHandler(sys.stdout))
@@ -343,12 +345,22 @@ bot = CmpcDidThis(
 )
 
 
+# wraps the library to make it easier to swap out
+# if I want to switch to the ml one
+def profanity_predict(words: list[str]) -> list[bool]:
+    profanity_array = [
+        (w in PROFANITY_INTERCEPT or profanity.contains_profanity(w))
+        for w in words
+    ]
+    return profanity_array
+
+
 class ProfanityLeaderboard(commands.Cog):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.conn: Optional[aiosqlite.Connection] = None
-        self.profanity_intercept = (":3",)
+        self.profanity_intercept = PROFANITY_INTERCEPT
         profanity.load_censor_words()
         profanity.add_censor_words(self.profanity_intercept)
 
@@ -378,7 +390,7 @@ class ProfanityLeaderboard(commands.Cog):
     async def process_profanity(self, message: Message) -> int:
         lower = message.content.casefold()
         mwords = lower.split()
-        profanity_array = self.profanity_predict(mwords)
+        profanity_array = profanity_predict(mwords)
         swears = {i: word for i, word in enumerate(mwords) if profanity_array[i]}
         if not swears:
             return 0
@@ -404,31 +416,32 @@ class ProfanityLeaderboard(commands.Cog):
 
         return len(swears)
 
-    # wraps the library to make it easier to swap out
-    # if I want to switch to the ml one
-    def profanity_predict(self, words: list[str]) -> list[bool]:
-        profanity_array = [
-            (x in self.profanity_intercept or profanity.contains_profanity(x))
-            for x in words
-        ]
-        return profanity_array
-
     class ProfanityConverter(commands.Converter[str]):
-        def __init__(self, cog: "ProfanityLeaderboard"):
-            self.cog = cog
-
         async def convert(self, ctx: Context, argument: str) -> str:
             word = argument.casefold()
-            check = self.cog.profanity_predict([word])[0]
+            check = profanity_predict([word])[0]
             if not check:
                 raise commands.BadArgument("Not a swear! L boomer.")
             return word
+
+    async def get_total(self, author_id: Optional[int], word: Optional[str]) -> int:
+        # ¿Quieres?
+        if author_id is not None:
+            query = "SELECT COUNT(*) FROM lb WHERE author_id=:author_id"
+        elif word is not None:
+            query = "SELECT COUNT(*) FROM lb WHERE word=:word"
+        else:
+            query = "SELECT COUNT(*) FROM lb"
+
+        arg = {"author_id": author_id, "word": word}
+        async with self.conn.execute_fetchall(query, arg) as rows:
+            total = rows[0][0]
+        return total
 
     # lock bicking lawyer
     @commands.hybrid_command(aliases=("lbl",))
     async def leaderblame(self, ctx: Context, word: ProfanityConverter):
         """whodunnit?"""
-
         query = """
                 SELECT author_id, COUNT(*) AS num FROM lb
                 WHERE word=:word
@@ -436,22 +449,21 @@ class ProfanityLeaderboard(commands.Cog):
                 LIMIT 10;
                 """
         arg = {"word": word}
-        thumb = None
         title = word
-        async with ctx.bot.conn.execute_fetchall(query, arg) as rows:
-            # todo: complete total, not just limit 10
-            #       fix for main leaderboard command too
-            total = sum(r[1] for r in rows)
-
-        content_list = []
-        for r in rows:
-            user = ctx.bot.get_user(r[0])
-            mention = "<@0>" if user is None else user.mention
-            content_list.append(f"{mention} ({r[1]})")
+        async with self.conn.execute_fetchall(query, arg) as rows:
+            content_list = []
+            for r in rows:
+                user = ctx.bot.get_user(r[0])
+                mention = "<@0>" if user is None else user.mention
+                content_list.append(f"{mention} ({r[1]})")
         content = "\n".join(content_list)
-        embed = Embed(title=title, description=content)
-        embed.set_footer(text=f"Total {total}", icon_url=thumb)
 
+        # pycharm doesn't like the converter type
+        # noinspection PyTypeChecker
+        total = await self.get_total(author_id=None, word=word)
+
+        embed = Embed(title=title, description=content)
+        embed.set_footer(text=f"Total {total}")
         await ctx.send(embed=embed)
 
     @commands.hybrid_command(aliases=("lb",))
@@ -469,22 +481,23 @@ class ProfanityLeaderboard(commands.Cog):
             arg = {"author_id": person.id}
             thumb = person.avatar.url
             title = person.name
+            total = await self.get_total(author_id=person.id, word=None)
         else:
             query = """
                     SELECT word, COUNT(*) AS num FROM lb
                     GROUP BY word ORDER BY num DESC
                     LIMIT 10;
                     """
-            arg = ()
+            arg = {}
             thumb = ctx.guild.icon.url
             title = ctx.guild.name
+            total = await self.get_total(author_id=None, word=None)
 
-        async with ctx.bot.conn.execute_fetchall(query, arg) as rows:
-            total = sum(r[1] for r in rows)
+        async with self.conn.execute_fetchall(query, arg) as rows:
             content = "\n".join(f"{r[0]} ({r[1]})" for r in rows)
+
         embed = Embed(title=title, description=content)
         embed.set_footer(text=f"Total {total}", icon_url=thumb)
-
         await ctx.send(embed=embed)
 
     @commands.command(hidden=True)
