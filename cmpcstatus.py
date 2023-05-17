@@ -44,6 +44,7 @@ COLOUR_GREEN = discord.Color.green()
 COLOUR_RED = discord.Color.red()
 COLOUR_BLUE = discord.Color.blue()
 EMOJI_SAT_CAT = discord.PartialEmoji.from_str("<:sad_cat:770191103310823426>")
+EMOJI_SKULL = discord.PartialEmoji.from_str("💀")
 
 TZ_AMSTERDAM = ZoneInfo("Europe/Amsterdam")
 DAY_WEDNESDAY = 3
@@ -255,9 +256,10 @@ class CmpcDidThis(commands.Bot):
     async def on_member_remove(self, member: Member):
         log.info("%s left", member.name)
         channel = self.get_channel(TEXT_CHANNEL_GENERAL)
-        await channel.send(
+        message = await channel.send(
             f"{EMOJI_SAT_CAT} *** {member.name} *** left the eggyboi family {EMOJI_SAT_CAT}"
         )
+        await message.add_reaction(EMOJI_SKULL)
 
     async def on_message(self, message: Message):
         await tags(message)
