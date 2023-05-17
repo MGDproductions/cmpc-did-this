@@ -155,6 +155,8 @@ class CmpcDidThis(commands.Bot):
         )
         await self.conn.commit()
 
+        await self.add_cog(DeveloperCommands())
+
         print("done")  # this line is needed to work with ptero
 
     async def on_ready(self):
@@ -391,7 +393,10 @@ def command_prefix(bot_: CmpcDidThis, message: Message) -> list[str]:
 
 
 bot = CmpcDidThis(
-    case_insensitive=True, command_prefix=command_prefix, intents=INTENTS, help_command=CmpcDidThisHelp()
+    case_insensitive=True,
+    command_prefix=command_prefix,
+    intents=INTENTS,
+    help_command=CmpcDidThisHelp(),
 )
 
 
@@ -541,68 +546,70 @@ async def say(ctx: Context, *, text: str):
     return await ctx.send(text)
 
 
-@bot.group(aliases=("dev",), case_insensitive=True, invoke_without_command=True)
-@commands.has_role(ROLE_DEVELOPER)
-async def developer_commands(ctx: Context):
-    dev_role = utils.get(ctx.guild.roles, id=ROLE_DEVELOPER)
-    mention_none = discord.AllowedMentions.none()
-    await ctx.send(f"{dev_role.mention} `<{dev_role.id}>`", allowed_mentions=mention_none)
+class DeveloperCommands(commands.Cog):
+    def cog_check(self, ctx: Context) -> bool:
+        # see discord.commands.has_role
+        if ctx.guild is None:
+            raise commands.NoPrivateMessage
+        role = discord.utils.get(ctx.author.roles, id=ROLE_DEVELOPER)
+        if role is None:
+            raise commands.MissingRole(ROLE_DEVELOPER)
+        return True
 
+    @commands.command(hidden=True)
+    async def backfill_database(
+        self,
+        ctx: Context,
+        channel: discord.TextChannel,
+        limit: Optional[int],
+        around: Optional[Message],
+    ):
+        await ctx.send(f"Loading history {channel.mention}")
+        count = 0
+        swears = 0
+        ignored = 0
+        async for message in channel.history(limit=limit, around=around):
+            count += 1
+            try:
+                swears += await ctx.bot.process_profanity(message)
+            except aiosqlite.IntegrityError:
+                ignored += 1
+        await ctx.send(
+            f"Messages {count} ignored {ignored} swears {swears} in {channel.mention}"
+        )
 
-@developer_commands.command(hidden=True)
-async def backfill_database(
-    ctx: Context,
-    channel: discord.TextChannel,
-    limit: Optional[int],
-    around: Optional[Message],
-):
-    await ctx.send(f"Loading history {channel.mention}")
-    count = 0
-    swears = 0
-    ignored = 0
-    async for message in channel.history(limit=limit, around=around):
-        count += 1
-        try:
-            swears += await ctx.bot.process_profanity(message)
-        except aiosqlite.IntegrityError:
-            ignored += 1
-    await ctx.send(
-        f"Messages {count} ignored {ignored} swears {swears} in {channel.mention}"
-    )
+    @commands.command(hidden=True)
+    async def backfill_multiple(self, ctx: Context, *channels: discord.TextChannel):
+        for c in channels:
+            await ctx.invoke(self.backfill_database, channel=c, limit=None, around=None)
 
+    # @bot.command(hidden=True)
+    # @commands.has_role(MOD_ROLE)
+    # async def hide(ctx: Context, *, invocation):
+    #     message = ctx.
+    #     return await bot.process_commands()
 
-@developer_commands.command(hidden=True)
-async def backfill_multiple(ctx: Context, *channels: discord.TextChannel):
-    for c in channels:
-        await ctx.invoke(backfill_database, channel=c, limit=None, around=None)
+    @commands.command(hidden=True)
+    async def shutdown(self, ctx: Context):
+        # works with pterodactyl?
+        log.info("Received shutdown order")
+        await ctx.send("Shutting down")
+        sys.exit()
 
-
-# @bot.command(hidden=True)
-# @commands.has_role(MOD_ROLE)
-# async def hide(ctx: Context, *, invocation):
-#     message = ctx.
-#     return await bot.process_commands()
-
-
-@developer_commands.command(hidden=True)
-async def shutdown(ctx: Context):
-    # works with pterodactyl?
-    log.info("Received shutdown order")
-    await ctx.send("Shutting down")
-    sys.exit()
-
-
-@developer_commands.command(hidden=True)
-async def test_event(
-    ctx: Context, member: Optional[Member], event: Literal["join", "remove"] = "join"
-):
-    log.info("Test event (%s) %s", member, event)
-    events = {
-        "join": bot.on_member_join,
-        "remove": bot.on_member_remove,
-    }
-    member = member or ctx.author
-    await events[event](member)
+    @commands.command(hidden=True)
+    async def test_event(
+        self,
+        ctx: Context,
+        member: Optional[Member],
+        event: Literal["join", "remove"] = "join",
+    ):
+        log.info("Test event (%s) %s", member, event)
+        events = {
+            "join": bot.on_member_join,
+            "remove": bot.on_member_remove,
+        }
+        member = member or ctx.author
+        await events[event](member)
 
 
 def main():
