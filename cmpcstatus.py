@@ -349,8 +349,7 @@ bot = CmpcDidThis(
 # if I want to switch to the ml one
 def profanity_predict(words: list[str]) -> list[bool]:
     profanity_array = [
-        (w in PROFANITY_INTERCEPT or profanity.contains_profanity(w))
-        for w in words
+        (w in PROFANITY_INTERCEPT or profanity.contains_profanity(w)) for w in words
     ]
     return profanity_array
 
@@ -438,6 +437,11 @@ class ProfanityLeaderboard(commands.Cog):
             total = rows[0][0]
         return total
 
+    # todo think about splitting (or merging?) these two commands
+    # leaderblame: person count for word
+    #              (MISSING) person count total
+    # leaderboard: word count total
+    #              word count for person
     # lock bicking lawyer
     @commands.hybrid_command(aliases=("lbl",))
     async def leaderblame(self, ctx: Context, word: ProfanityConverter):
@@ -509,20 +513,29 @@ class ProfanityLeaderboard(commands.Cog):
         around: Optional[Message],
         *channels: discord.TextChannel,
     ):
+        status_interval = 1000
+
         for c in channels:
-            await ctx.send(f"Loading history {c.mention}")
+            status_message = await ctx.send(f"Loading history {c.mention}")
             count = 0
             swears = 0
             ignored = 0
+
+            async def update_status():
+                await status_message.edit(
+                    content=f"Messages {count}, ignored {ignored}, swears {swears} in {c.mention}"
+                )
+
             async for message in c.history(limit=limit, around=around):
                 count += 1
                 try:
                     swears += await self.process_profanity(message)
                 except aiosqlite.IntegrityError:
                     ignored += 1
-            await ctx.send(
-                f"Messages {count} ignored {ignored} swears {swears} in {c.mention}"
-            )
+                if count % status_interval == 0:
+                    await update_status()
+            await update_status()
+            await ctx.send(f"Loaded history {c.mention}")
 
 
 # COMMANDS
