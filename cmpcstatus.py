@@ -31,6 +31,8 @@ ENABLE_CLOCK = True
 ENABLE_FISH = True
 ENABLE_WELCOME = True
 
+DATABASE_PATH = "db.sqlite3"
+
 GUILD_EGGYBOI = 714154158969716780
 ROLE_DEVELOPER = 741317598452645949
 ROLE_FISH = 875359516131209256
@@ -95,18 +97,6 @@ def load_config(fp: str = "config.json") -> dict:
         return json.load(file, object_hook=config_object_hook)
 
 
-profanity_intercept = [":3"]
-profanity.load_censor_words()
-profanity.add_censor_words(profanity_intercept)
-
-
-def profanity_predict(words: list[str]) -> list[bool]:
-    profanity_array = [
-        (x in profanity_intercept or profanity.contains_profanity(x)) for x in words
-    ]
-    return profanity_array
-
-
 async def tags(message: Message):
     t = message.content.casefold()
     for k, v in {
@@ -121,7 +111,6 @@ async def tags(message: Message):
 class CmpcDidThis(commands.Bot):
     def __init__(self, *args, **kwargs):
         self.config = load_config()
-        self.conn: Optional[aiosqlite.Connection] = None
         self.session: Optional[aiohttp.ClientSession] = None
         self.tasks: list[tasks.Loop] = []
         if ENABLE_CLOCK:
@@ -138,23 +127,11 @@ class CmpcDidThis(commands.Bot):
 
     # SETUP
     async def setup_hook(self):
+        # set up http session
         self.session = aiohttp.ClientSession()
 
-        self.conn = await aiosqlite.connect("db.sqlite3")
-        await self.conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS lb (
-                message_id INTEGER NOT NULL,
-                created_at REAL NOT NULL,
-                author_id INTEGER NOT NULL,
-                word TEXT NOT NULL,
-                position INTEGER NOT NULL,
-                PRIMARY KEY (message_id, position)
-            );
-            """
-        )
-        await self.conn.commit()
-
+        # add default cogs
+        await self.add_cog(ProfanityLeaderboard())
         await self.add_cog(DeveloperCommands())
 
         print("done")  # this line is needed to work with ptero
@@ -179,42 +156,12 @@ class CmpcDidThis(commands.Bot):
     async def close(self):
         log.info("Closing bot instance")
         await super().close()
-        await self.conn.close()
         await self.session.close()
         for t in self.tasks:
             t.stop()
         log.info("Closed gracefully")
 
     # EVENTS
-    async def process_profanity(self, message: Message) -> int:
-        lower = message.content.casefold()
-        mwords = lower.split()
-        profanity_array = profanity_predict(mwords)
-        swears = {i: word for i, word in enumerate(mwords) if profanity_array[i]}
-        if not swears:
-            return 0
-
-        timestamp = message.created_at.timestamp()
-        await self.conn.executemany(
-            """
-            INSERT INTO lb (message_id, created_at, author_id, word, position)
-            VALUES (:message_id, :created_at, :author_id, :word, :position);
-            """,
-            (
-                {
-                    "message_id": message.id,
-                    "created_at": timestamp,
-                    "author_id": message.author.id,
-                    "word": word,
-                    "position": position,
-                }
-                for position, word in swears.items()
-            ),
-        )
-        await self.conn.commit()
-
-        return len(swears)
-
     async def on_member_join(self, member: Member):
         role = utils.get(member.guild.roles, id=ROLE_MEMBER)
         await member.add_roles(role)
@@ -264,9 +211,8 @@ class CmpcDidThis(commands.Bot):
         await message.add_reaction(EMOJI_SKULL)
 
     async def on_message(self, message: Message):
+        await super().on_message(message)
         await tags(message)
-        await self.process_profanity(message)
-        await self.process_commands(message)
 
     # TASKS
     @tasks.loop(time=CLOCK_TIMES)
@@ -400,81 +346,151 @@ bot = CmpcDidThis(
 )
 
 
-class ProfanityConverter(commands.Converter[str]):
-    async def convert(self, ctx: Context, argument: str) -> str:
-        word = argument.casefold()
-        check = profanity_predict([word])[0]
-        if not check:
-            raise commands.BadArgument("Not a swear! L boomer.")
-        return word
+class ProfanityLeaderboard(commands.Cog):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.conn: Optional[aiosqlite.Connection] = None
+        self.profanity_intercept = (":3",)
+        profanity.load_censor_words()
+        profanity.add_censor_words(self.profanity_intercept)
+
+    async def cog_load(self):
+        self.conn = await aiosqlite.connect(DATABASE_PATH)
+        await self.conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS lb (
+                message_id INTEGER NOT NULL,
+                created_at REAL NOT NULL,
+                author_id INTEGER NOT NULL,
+                word TEXT NOT NULL,
+                position INTEGER NOT NULL,
+                PRIMARY KEY (message_id, position)
+            );
+            """
+        )
+        await self.conn.commit()
+
+    async def cog_unload(self):
+        await self.conn.close()
+
+    @commands.Cog.listener()
+    async def on_message(self, message: Message):
+        await self.process_profanity(message)
+
+    async def process_profanity(self, message: Message) -> int:
+        lower = message.content.casefold()
+        mwords = lower.split()
+        profanity_array = self.profanity_predict(mwords)
+        swears = {i: word for i, word in enumerate(mwords) if profanity_array[i]}
+        if not swears:
+            return 0
+
+        timestamp = message.created_at.timestamp()
+        await self.conn.executemany(
+            """
+            INSERT INTO lb (message_id, created_at, author_id, word, position)
+            VALUES (:message_id, :created_at, :author_id, :word, :position);
+            """,
+            (
+                {
+                    "message_id": message.id,
+                    "created_at": timestamp,
+                    "author_id": message.author.id,
+                    "word": word,
+                    "position": position,
+                }
+                for position, word in swears.items()
+            ),
+        )
+        await self.conn.commit()
+
+        return len(swears)
+
+    # wraps the library to make it easier to swap out
+    # if I want to switch to the ml one
+    def profanity_predict(self, words: list[str]) -> list[bool]:
+        profanity_array = [
+            (x in self.profanity_intercept or profanity.contains_profanity(x)) for x in words
+        ]
+        return profanity_array
+
+    class ProfanityConverter(commands.Converter[str]):
+        def __init__(self, cog: "ProfanityLeaderboard"):
+            self.cog = cog
+
+        async def convert(self, ctx: Context, argument: str) -> str:
+            word = argument.casefold()
+            check = self.cog.profanity_predict([word])[0]
+            if not check:
+                raise commands.BadArgument("Not a swear! L boomer.")
+            return word
+
+    # lock bicking lawyer
+    @commands.hybrid_command(aliases=("lbl",))
+    async def leaderblame(self, ctx: Context, word: ProfanityConverter):
+        """whodunnit?"""
+
+        query = """
+                SELECT author_id, COUNT(*) AS num FROM lb
+                WHERE word=:word
+                GROUP BY author_id ORDER BY num DESC
+                LIMIT 10;
+                """
+        arg = {"word": word}
+        thumb = None
+        title = word
+        async with ctx.bot.conn.execute_fetchall(query, arg) as rows:
+            # todo: complete total, not just limit 10
+            #       fix for main leaderboard command too
+            total = sum(r[1] for r in rows)
+
+        content_list = []
+        for r in rows:
+            user = ctx.bot.get_user(r[0])
+            mention = "<@0>" if user is None else user.mention
+            content_list.append(f"{mention} ({r[1]})")
+        content = "\n".join(content_list)
+        embed = Embed(title=title, description=content)
+        embed.set_footer(text=f"Total {total}", icon_url=thumb)
+
+        await ctx.send(embed=embed)
+
+    @commands.hybrid_command(aliases=("lb",))
+    async def leaderboard(self, ctx: Context, person: Optional[Member]):
+        # idk how this works but it sure does
+        # or, in sql language:
+        # IDK HOW this, WORKS BUT (it) SURE DOES
+        if person is not None:
+            query = """
+                    SELECT word, COUNT(*) AS num FROM lb
+                    WHERE author_id=:author_id
+                    GROUP BY word ORDER BY num DESC
+                    LIMIT 10;
+                    """
+            arg = {"author_id": person.id}
+            thumb = person.avatar.url
+            title = person.name
+        else:
+            query = """
+                    SELECT word, COUNT(*) AS num FROM lb
+                    GROUP BY word ORDER BY num DESC
+                    LIMIT 10;
+                    """
+            arg = ()
+            thumb = ctx.guild.icon.url
+            title = ctx.guild.name
+
+        async with ctx.bot.conn.execute_fetchall(query, arg) as rows:
+            total = sum(r[1] for r in rows)
+            content = "\n".join(f"{r[0]} ({r[1]})" for r in rows)
+        embed = Embed(title=title, description=content)
+        embed.set_footer(text=f"Total {total}", icon_url=thumb)
+
+        await ctx.send(embed=embed)
 
 
 # COMMANDS
-# lock bicking lawyer
-@bot.hybrid_command(aliases=("lbl",))
-async def leaderblame(ctx: Context, word: ProfanityConverter):
-    """whodunnit?"""
-
-    query = """
-            SELECT author_id, COUNT(*) AS num FROM lb
-            WHERE word=:word
-            GROUP BY author_id ORDER BY num DESC
-            LIMIT 10;
-            """
-    arg = {"word": word}
-    thumb = None
-    title = word
-    async with ctx.bot.conn.execute_fetchall(query, arg) as rows:
-        # todo: complete total, not just limit 10
-        #       fix for main leaderboard command too
-        total = sum(r[1] for r in rows)
-
-    content_list = []
-    for r in rows:
-        user = ctx.bot.get_user(r[0])
-        mention = "<@0>" if user is None else user.mention
-        content_list.append(f"{mention} ({r[1]})")
-    content = "\n".join(content_list)
-    embed = Embed(title=title, description=content)
-    embed.set_footer(text=f"Total {total}", icon_url=thumb)
-
-    await ctx.send(embed=embed)
-
-
-@bot.hybrid_command(aliases=("lb",))
-async def leaderboard(ctx: Context, person: Optional[Member]):
-    # idk how this works but it sure does
-    # or, in sql language:
-    # IDK HOW this, WORKS BUT (it) SURE DOES
-    if person is not None:
-        query = """
-                SELECT word, COUNT(*) AS num FROM lb
-                WHERE author_id=:author_id
-                GROUP BY word ORDER BY num DESC
-                LIMIT 10;
-                """
-        arg = {"author_id": person.id}
-        thumb = person.avatar.url
-        title = person.name
-    else:
-        query = """
-                SELECT word, COUNT(*) AS num FROM lb
-                GROUP BY word ORDER BY num DESC
-                LIMIT 10;
-                """
-        arg = ()
-        thumb = ctx.guild.icon.url
-        title = ctx.guild.name
-
-    async with ctx.bot.conn.execute_fetchall(query, arg) as rows:
-        total = sum(r[1] for r in rows)
-        content = "\n".join(f"{r[0]} ({r[1]})" for r in rows)
-    embed = Embed(title=title, description=content)
-    embed.set_footer(text=f"Total {total}", icon_url=thumb)
-
-    await ctx.send(embed=embed)
-
-
 @bot.hybrid_command(name="capybara", aliases=("capy",))
 async def random_capybara(ctx: Context):
     """gives you a random capybara"""
@@ -571,7 +587,7 @@ class DeveloperCommands(commands.Cog):
         async for message in channel.history(limit=limit, around=around):
             count += 1
             try:
-                swears += await ctx.bot.process_profanity(message)
+                swears += await self.process_profanity(message)
             except aiosqlite.IntegrityError:
                 ignored += 1
         await ctx.send(
@@ -611,6 +627,8 @@ class DeveloperCommands(commands.Cog):
         member = member or ctx.author
         await events[event](member)
 
+
+# todo use ptero library
 
 def main():
     log.info("Connecting to discord...")
