@@ -27,34 +27,35 @@ INTENTS = discord.Intents.default()
 INTENTS.members = True
 INTENTS.message_content = True
 
-CLOCK = True
-FISHGAMINGWEDNESDAY = True
-WELCOME = True
+ENABLE_CLOCK = True
+ENABLE_FISH = True
+ENABLE_WELCOME = True
 
-CLOCK_VOICE_CHANNEL = 753467367966638100
-FISH_TEXT_CHANNEL = 875297517351358474
-GENERAL_TEXT_CHANNEL = 714154159590473801
-EGGYBOI_GUILD = 714154158969716780
-FISH_ROLE = 875359516131209256
-MEMBER_ROLE = 932977796492427276
-MOD_ROLE = 725356663850270821
+GUILD_EGGYBOI = 714154158969716780
+ROLE_DEVELOPER = 741317598452645949
+ROLE_FISH = 875359516131209256
+ROLE_MEMBER = 932977796492427276
+ROLE_MODS = 725356663850270821
+TEXT_CHANNEL_FISH = 875297517351358474
+TEXT_CHANNEL_GENERAL = 714154159590473801
+VOICE_CHANNEL_CLOCK = 753467367966638100
 
-GREEN = discord.Color.green()
-RED = discord.Color.red()
-BLUE = discord.Color.blue()
-SAD_CAT_EMOJI = discord.PartialEmoji.from_str("<:sad_cat:770191103310823426>")
+COLOUR_GREEN = discord.Color.green()
+COLOUR_RED = discord.Color.red()
+COLOUR_BLUE = discord.Color.blue()
+EMOJI_SAT_CAT = discord.PartialEmoji.from_str("<:sad_cat:770191103310823426>")
 
-AMSTERDAM = ZoneInfo("Europe/Amsterdam")
-WEDNESDAY = 3
-THURSDAY = 4
+TZ_AMSTERDAM = ZoneInfo("Europe/Amsterdam")
+DAY_WEDNESDAY = 3
+DAY_THURSDAY = 4
 CLOCK_TIMES = [
-    datetime.time(hour=h, minute=m, tzinfo=AMSTERDAM)
+    datetime.time(hour=h, minute=m, tzinfo=TZ_AMSTERDAM)
     for m in range(0, 60, 10)
     for h in range(24)
 ]
-FGW_START_TIME = datetime.time(hour=0, tzinfo=AMSTERDAM)
-FGW_END_TIME = datetime.time(hour=0, tzinfo=AMSTERDAM)
-FGW_HIDE_TIME = datetime.time(hour=0, minute=5, tzinfo=AMSTERDAM)
+FGW_START_TIME = datetime.time(hour=0, tzinfo=TZ_AMSTERDAM)
+FGW_END_TIME = datetime.time(hour=0, tzinfo=TZ_AMSTERDAM)
+FGW_HIDE_TIME = datetime.time(hour=0, minute=5, tzinfo=TZ_AMSTERDAM)
 # how many seconds in a minute
 COUNTDOWN_MINUTE = 60
 
@@ -122,9 +123,9 @@ class CmpcDidThis(commands.Bot):
         self.conn: Optional[aiosqlite.Connection] = None
         self.session: Optional[aiohttp.ClientSession] = None
         self.tasks: list[tasks.Loop] = []
-        if CLOCK:
+        if ENABLE_CLOCK:
             self.tasks.append(self.clock)
-        if FISHGAMINGWEDNESDAY:
+        if ENABLE_FISH:
             self.tasks.extend(
                 (
                     self.fgw_start,
@@ -161,7 +162,7 @@ class CmpcDidThis(commands.Bot):
             if not t.is_running():
                 t.start()
         # upload slash commands
-        server = self.get_guild(EGGYBOI_GUILD)
+        server = self.get_guild(GUILD_EGGYBOI)
         self.tree.copy_global_to(guild=server)
         await self.tree.sync(guild=server)
         # set activity
@@ -212,15 +213,15 @@ class CmpcDidThis(commands.Bot):
         return len(swears)
 
     async def on_member_join(self, member: Member):
-        role = utils.get(member.guild.roles, id=MEMBER_ROLE)
+        role = utils.get(member.guild.roles, id=ROLE_MEMBER)
         await member.add_roles(role)
 
-        if not WELCOME:
+        if not ENABLE_WELCOME:
             return
         name = member.name
         log.info("%s joined", name)
 
-        channel = self.get_channel(GENERAL_TEXT_CHANNEL)
+        channel = self.get_channel(TEXT_CHANNEL_GENERAL)
         async with channel.typing():
             # create image
             newline = "\n" if len(name) > 10 else " "
@@ -247,15 +248,15 @@ class CmpcDidThis(commands.Bot):
             image.save(fp, "PNG")
             fp.seek(0)
             file = discord.File(fp, filename=filename)
-            embed = Embed(title=f"{name} joined", color=RED)
+            embed = Embed(title=f"{name} joined", color=COLOUR_RED)
             embed.set_image(url=f"attachment://{filename}")
             await channel.send(content=member.mention, file=file, embed=embed)
 
     async def on_member_remove(self, member: Member):
         log.info("%s left", member.name)
-        channel = self.get_channel(GENERAL_TEXT_CHANNEL)
+        channel = self.get_channel(TEXT_CHANNEL_GENERAL)
         await channel.send(
-            f"{SAD_CAT_EMOJI} *** {member.name} *** left the eggyboi family {SAD_CAT_EMOJI}"
+            f"{EMOJI_SAT_CAT} *** {member.name} *** left the eggyboi family {EMOJI_SAT_CAT}"
         )
 
     async def on_message(self, message: Message):
@@ -266,26 +267,26 @@ class CmpcDidThis(commands.Bot):
     # TASKS
     @tasks.loop(time=CLOCK_TIMES)
     async def clock(self):
-        datetime_amsterdam = datetime.datetime.now(AMSTERDAM)
+        datetime_amsterdam = datetime.datetime.now(TZ_AMSTERDAM)
         ams_time = datetime_amsterdam.strftime("cmpc: %H:%M")
         log.debug(f"time for cmpc: %s", ams_time)
-        channel = self.get_channel(CLOCK_VOICE_CHANNEL)
+        channel = self.get_channel(VOICE_CHANNEL_CLOCK)
         await channel.edit(name=ams_time)
 
     def wednesday_channel(self, *, day: int) -> Optional[discord.TextChannel]:
-        datetime_amsterdam = datetime.datetime.now(AMSTERDAM)
+        datetime_amsterdam = datetime.datetime.now(TZ_AMSTERDAM)
         log.info("day-of-week check %d : %s", day, datetime_amsterdam)
         if datetime_amsterdam.isoweekday() != day:
             log.info("Not doing fgw routine")
             return None
         else:
             log.info("Doing fgw routine")
-            return self.get_channel(FISH_TEXT_CHANNEL)
+            return self.get_channel(TEXT_CHANNEL_FISH)
 
     @tasks.loop(time=FGW_START_TIME)
     async def fgw_start(self):
         # only run on wednesday
-        channel = self.wednesday_channel(day=WEDNESDAY)
+        channel = self.wednesday_channel(day=DAY_WEDNESDAY)
         if channel is None:
             return
 
@@ -299,13 +300,13 @@ class CmpcDidThis(commands.Bot):
             channel.guild.default_role, overwrite=perms, reason="fgw_start"
         )
         await channel.send(
-            f"<@&{FISH_ROLE}>", file=discord.File("assets/fishgamingwednesday.mp4")
+            f"<@&{ROLE_FISH}>", file=discord.File("assets/fishgamingwednesday.mp4")
         )
 
     @tasks.loop(time=FGW_END_TIME)
     async def fgw_end(self):
         # only run on thursday (end of wednesday)
-        channel = self.wednesday_channel(day=THURSDAY)
+        channel = self.wednesday_channel(day=DAY_THURSDAY)
         if channel is None:
             return
 
@@ -321,7 +322,7 @@ class CmpcDidThis(commands.Bot):
         )
 
         # create countdown message
-        embed = Embed(title="Fish gaming wednesday has ended.", color=BLUE)
+        embed = Embed(title="Fish gaming wednesday has ended.", color=COLOUR_BLUE)
         filename = "fgwends.png"
         embed.set_image(url=f"attachment://{filename}")
         file = discord.File(f"assets/{filename}", filename=f"{filename}")
@@ -342,7 +343,7 @@ class CmpcDidThis(commands.Bot):
 
     @tasks.loop(time=FGW_HIDE_TIME)
     async def fgw_hide(self):
-        channel = self.wednesday_channel(day=THURSDAY)
+        channel = self.wednesday_channel(day=DAY_THURSDAY)
         if channel is None:
             return
 
@@ -360,7 +361,7 @@ class CmpcDidThis(commands.Bot):
 class CmpcDidThisHelp(commands.DefaultHelpCommand):
     async def send_bot_help(self, mapping: dict, /):
         ctx = self.context
-        embed = Embed(title="cmpc did this commands", color=GREEN)
+        embed = Embed(title="cmpc did this commands", color=COLOUR_GREEN)
         pairs = (
             ("random word", "gives you a random word"),
             ("random game", "gives you a random game"),
@@ -473,7 +474,7 @@ async def random_capybara(ctx: Context):
     async with ctx.typing():
         async with ctx.bot.session.get("https://api.capy.lol/v1/capybara") as response:
             fp = BytesIO(await response.content.read())
-        embed = Embed(title="capybara for u!", color=RED)
+        embed = Embed(title="capybara for u!", color=COLOUR_RED)
         filename = "capybara.png"
         file = discord.File(fp, filename=filename)
         embed.set_image(url=f"attachment://{filename}")
@@ -539,7 +540,7 @@ async def say(ctx: Context, *, text: str):
 
 
 @bot.command(hidden=True)
-@commands.has_role(MOD_ROLE)
+@commands.has_role(ROLE_MODS)
 async def backfill_database(
     ctx: Context,
     channel: discord.TextChannel,
@@ -562,7 +563,7 @@ async def backfill_database(
 
 
 @bot.command(hidden=True)
-@commands.has_role(MOD_ROLE)
+@commands.has_role(ROLE_MODS)
 async def backfill_multiple(ctx: Context, *channels: discord.TextChannel):
     for c in channels:
         await ctx.invoke(backfill_database, channel=c, limit=None, around=None)
@@ -576,7 +577,7 @@ async def backfill_multiple(ctx: Context, *channels: discord.TextChannel):
 
 
 @bot.command(hidden=True)
-@commands.has_role(MOD_ROLE)
+@commands.has_role(ROLE_MODS)
 async def shutdown(ctx: Context):
     # works with pterodactyl?
     log.info("Received shutdown order")
@@ -585,7 +586,7 @@ async def shutdown(ctx: Context):
 
 
 @bot.command(hidden=True)
-@commands.has_role(MOD_ROLE)
+@commands.has_role(ROLE_MODS)
 async def test_event(
     ctx: Context, member: Optional[Member], event: Literal["join", "remove"] = "join"
 ):
