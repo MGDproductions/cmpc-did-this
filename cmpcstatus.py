@@ -411,7 +411,8 @@ class ProfanityLeaderboard(commands.Cog):
     # if I want to switch to the ml one
     def profanity_predict(self, words: list[str]) -> list[bool]:
         profanity_array = [
-            (x in self.profanity_intercept or profanity.contains_profanity(x)) for x in words
+            (x in self.profanity_intercept or profanity.contains_profanity(x))
+            for x in words
         ]
         return profanity_array
 
@@ -489,6 +490,30 @@ class ProfanityLeaderboard(commands.Cog):
 
         await ctx.send(embed=embed)
 
+    @commands.command(hidden=True)
+    @commands.has_role(ROLE_DEVELOPER)
+    async def backfill_database(
+        self,
+        ctx: Context,
+        limit: Optional[int],
+        around: Optional[Message],
+        *channels: discord.TextChannel,
+    ):
+        for c in channels:
+            await ctx.send(f"Loading history {c.mention}")
+            count = 0
+            swears = 0
+            ignored = 0
+            async for message in c.history(limit=limit, around=around):
+                count += 1
+                try:
+                    swears += await self.process_profanity(message)
+                except aiosqlite.IntegrityError:
+                    ignored += 1
+            await ctx.send(
+                f"Messages {count} ignored {ignored} swears {swears} in {c.mention}"
+            )
+
 
 # COMMANDS
 @bot.hybrid_command(name="capybara", aliases=("capy",))
@@ -556,10 +581,18 @@ async def testconn(ctx: Context):
     return await ctx.send("hi there dude!")
 
 
+# PRIVILEGED COMMANDS
 @bot.command(hidden=True)
 @commands.is_owner()
 async def say(ctx: Context, *, text: str):
     return await ctx.send(text)
+
+
+# @bot.command(hidden=True)
+# @commands.has_role(MOD_ROLE)
+# async def hide(ctx: Context, *, invocation):
+#     message = ctx.
+#     return await bot.process_commands()
 
 
 class DeveloperCommands(commands.Cog):
@@ -571,39 +604,6 @@ class DeveloperCommands(commands.Cog):
         if role is None:
             raise commands.MissingRole(ROLE_DEVELOPER)
         return True
-
-    @commands.command(hidden=True)
-    async def backfill_database(
-        self,
-        ctx: Context,
-        channel: discord.TextChannel,
-        limit: Optional[int],
-        around: Optional[Message],
-    ):
-        await ctx.send(f"Loading history {channel.mention}")
-        count = 0
-        swears = 0
-        ignored = 0
-        async for message in channel.history(limit=limit, around=around):
-            count += 1
-            try:
-                swears += await self.process_profanity(message)
-            except aiosqlite.IntegrityError:
-                ignored += 1
-        await ctx.send(
-            f"Messages {count} ignored {ignored} swears {swears} in {channel.mention}"
-        )
-
-    @commands.command(hidden=True)
-    async def backfill_multiple(self, ctx: Context, *channels: discord.TextChannel):
-        for c in channels:
-            await ctx.invoke(self.backfill_database, channel=c, limit=None, around=None)
-
-    # @bot.command(hidden=True)
-    # @commands.has_role(MOD_ROLE)
-    # async def hide(ctx: Context, *, invocation):
-    #     message = ctx.
-    #     return await bot.process_commands()
 
     @commands.command(hidden=True)
     async def shutdown(self, ctx: Context):
@@ -629,6 +629,7 @@ class DeveloperCommands(commands.Cog):
 
 
 # todo use ptero library
+
 
 def main():
     log.info("Connecting to discord...")
