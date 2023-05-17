@@ -609,7 +609,7 @@ class DeveloperCommands(commands.Cog):
         log.info(message)
         await ctx.send(message)
 
-        url = f"{bot.config.ptero_address}/client/servers/{bot.config.ptero_server_id}/power"
+        url = f"{bot.config.ptero_address}/api/client/servers/{bot.config.ptero_server_id}/power"
         payload = {"signal": signal}
         headers = {"Authorization": f"Bearer {bot.config.ptero_token}"}
         async with bot.session.post(url, json=payload, headers=headers) as response:
