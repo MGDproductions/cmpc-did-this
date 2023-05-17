@@ -539,8 +539,11 @@ async def say(ctx: Context, *, text: str):
     return await ctx.send(text)
 
 
-@bot.command(hidden=True)
-@commands.has_role(ROLE_MODS)
+developer_commands = commands.Group()
+developer_commands.add_check(commands.has_role(ROLE_DEVELOPER))
+
+
+@developer_commands.command(hidden=True)
 async def backfill_database(
     ctx: Context,
     channel: discord.TextChannel,
@@ -562,8 +565,7 @@ async def backfill_database(
     )
 
 
-@bot.command(hidden=True)
-@commands.has_role(ROLE_MODS)
+@developer_commands.command(hidden=True)
 async def backfill_multiple(ctx: Context, *channels: discord.TextChannel):
     for c in channels:
         await ctx.invoke(backfill_database, channel=c, limit=None, around=None)
@@ -576,8 +578,7 @@ async def backfill_multiple(ctx: Context, *channels: discord.TextChannel):
 #     return await bot.process_commands()
 
 
-@bot.command(hidden=True)
-@commands.has_role(ROLE_MODS)
+@developer_commands.command(hidden=True)
 async def shutdown(ctx: Context):
     # works with pterodactyl?
     log.info("Received shutdown order")
@@ -585,8 +586,7 @@ async def shutdown(ctx: Context):
     sys.exit()
 
 
-@bot.command(hidden=True)
-@commands.has_role(ROLE_MODS)
+@developer_commands.command(hidden=True)
 async def test_event(
     ctx: Context, member: Optional[Member], event: Literal["join", "remove"] = "join"
 ):
