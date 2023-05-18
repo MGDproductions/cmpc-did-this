@@ -449,57 +449,61 @@ class ProfanityLeaderboard(commands.Cog):
             total = rows[0][0]
         return total
 
-    @commands.hybrid_command(aliases=("leaderboard", "lbo"))
+    @commands.hybrid_command(aliases=("leaderboard", "lb"))
     async def leaderboard_person(self, ctx: Context, person: Optional[Member]):
+        embed = discord.Embed()
         if person is not None:
             where = "WHERE author_id=:author_id"
             arg = {"author_id": person.id}
-            title = person.name
-            thumb = person.display_avatar.url
+            embed.set_author(name=person.name, icon_url=person.display_avatar.url)
             total = await self.get_total(author_id=person.id, word=None)
         else:
             where = ""
             arg = {}
-            title = ctx.guild.name
-            thumb = ctx.guild.icon.url
+            guild = ctx.guild
+            icon_url = guild.icon.url if guild.icon is not None else None
+            embed.set_author(name=guild.name, icon_url=icon_url)
             total = await self.get_total()
+
+        embed.set_footer(text=f"Total: {total}")
         query = f"""
                 SELECT word, COUNT(*) AS num FROM lb
                 {where}
                 GROUP BY word ORDER BY num DESC
                 LIMIT {PROFANITY_ROWS};
                 """
-
-        embed = Embed(title=f"Total: {total}")
-        embed.set_footer(text=title, icon_url=thumb)
         async with self.conn.execute_fetchall(query, arg) as rows:
             for word, count in rows:
                 embed.add_field(name=count, value=word, inline=PROFANITY_INLINE)
+
         await ctx.send(embed=embed, allowed_mentions=MENTION_NONE)
 
     # lock bicking lawyer
     @commands.hybrid_command(aliases=("leaderblame", "lbl"))
     async def leaderboard_word(self, ctx: Context, word: Optional[ProfanityConverter]):
         """whodunnit?"""
+        embed = discord.Embed()
+        guild = ctx.guild
+        icon_url = guild.icon.url if guild.icon is not None else None
+
         if word is not None:
             where = "WHERE word=:word"
             arg = {"word": word}
-            title = word
+            embed.set_author(name=word, icon_url=icon_url)
             total = await self.get_total(author_id=None, word=word)
         else:
             where = ""
             arg = {}
-            title = ctx.guild.name
+            embed.set_author(name=guild.name, icon_url=icon_url)
             total = await self.get_total()
+
+        embed.set_footer(text=f"Total: {total}")
         query = f"""
                 SELECT author_id, COUNT(*) AS num FROM lb
                 {where}
                 GROUP BY author_id ORDER BY num DESC
                 LIMIT {PROFANITY_ROWS}
                 """
-
-        embed = Embed(title=f"Total: {total}")
-        embed.set_footer(text=title, icon_url=ctx.guild.icon.url)
         async with self.conn.execute_fetchall(query, arg) as rows:
             for author_id, count in rows:
                 embed.add_field(
