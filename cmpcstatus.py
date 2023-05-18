@@ -49,6 +49,8 @@ COLOUR_BLUE = discord.Color.blue()
 EMOJI_SAT_CAT = discord.PartialEmoji.from_str("<:sad_cat:770191103310823426>")
 EMOJI_SKULL = discord.PartialEmoji.from_str("💀")
 
+MENTION_NONE = discord.AllowedMentions.none()
+
 TZ_AMSTERDAM = ZoneInfo("Europe/Amsterdam")
 DAY_WEDNESDAY = 3
 DAY_THURSDAY = 4
@@ -423,7 +425,9 @@ class ProfanityLeaderboard(commands.Cog):
                 raise commands.BadArgument("Not a swear! L boomer.")
             return word
 
-    async def get_total(self, author_id: Optional[int], word: Optional[str]) -> int:
+    async def get_total(
+        self, author_id: int = None, word: ProfanityConverter = None
+    ) -> int:
         # ¿Quieres?
         if author_id is not None:
             query = "SELECT COUNT(*) FROM lb WHERE author_id=:author_id"
@@ -437,72 +441,63 @@ class ProfanityLeaderboard(commands.Cog):
             total = rows[0][0]
         return total
 
-    # todo think about splitting (or merging?) these two commands
-    # leaderblame: person count for word
-    #              (MISSING) person count total
-    # leaderboard: word count total
-    #              word count for person
-    @commands.hybrid_command(aliases=("lb",))
-    async def leaderboard(self, ctx: Context, person: Optional[Member]):
-        # idk how this works but it sure does
-        # or, in sql language:
-        # IDK HOW this, WORKS BUT (it) SURE DOES
+    @commands.hybrid_command(aliases=("leaderboard", "lbo"))
+    async def leaderboard_person(self, ctx: Context, person: Optional[Member]):
         if person is not None:
-            query = """
-                        SELECT word, COUNT(*) AS num FROM lb
-                        WHERE author_id=:author_id
-                        GROUP BY word ORDER BY num DESC
-                        LIMIT 10;
-                        """
+            where = "WHERE author_id=:author_id"
             arg = {"author_id": person.id}
-            thumb = person.avatar.url
             title = person.name
+            thumb = person.avatar.url
             total = await self.get_total(author_id=person.id, word=None)
         else:
-            query = """
-                        SELECT word, COUNT(*) AS num FROM lb
-                        GROUP BY word ORDER BY num DESC
-                        LIMIT 10;
-                        """
+            where = ""
             arg = {}
-            thumb = ctx.guild.icon.url
             title = ctx.guild.name
-            total = await self.get_total(author_id=None, word=None)
+            thumb = ctx.guild.icon.url
+            total = await self.get_total()
+        query = f"""
+                SELECT word, COUNT(*) AS num FROM lb
+                {where}
+                GROUP BY word ORDER BY num DESC
+                LIMIT 10;
+                """
 
         async with self.conn.execute_fetchall(query, arg) as rows:
-            content = "\n".join(f"{r[0]} ({r[1]})" for r in rows)
+            content_list = [f"{word} ({count})" for word, count in rows]
 
+        content = "\n".join(content_list)
         embed = Embed(title=title, description=content)
         embed.set_footer(text=f"Total {total}", icon_url=thumb)
-        await ctx.send(embed=embed)
+        await ctx.send(embed=embed, allowed_mentions=MENTION_NONE)
 
     # lock bicking lawyer
-    @commands.hybrid_command(aliases=("lbl",))
-    async def leaderblame(self, ctx: Context, word: ProfanityConverter):
+    @commands.hybrid_command(aliases=("leaderblame", "lbl"))
+    async def leaderboard_word(self, ctx: Context, word: Optional[ProfanityConverter]):
         """whodunnit?"""
-        query = """
+        if word is not None:
+            where = "WHERE word=:word"
+            arg = {"word": word}
+            title = word
+            total = await self.get_total(author_id=None, word=word)
+        else:
+            where = ""
+            arg = {}
+            title = ctx.guild.name
+            total = await self.get_total()
+        query = f"""
                 SELECT author_id, COUNT(*) AS num FROM lb
-                WHERE word=:word
+                {where}
                 GROUP BY author_id ORDER BY num DESC
                 LIMIT 10;
                 """
-        arg = {"word": word}
-        title = word
+
         async with self.conn.execute_fetchall(query, arg) as rows:
-            content_list = []
-            for r in rows:
-                user = ctx.bot.get_user(r[0])
-                mention = "<@0>" if user is None else user.mention
-                content_list.append(f"{mention} ({r[1]})")
+            content_list = [f"<@{author_id}> ({count})" for author_id, count in rows]
+
         content = "\n".join(content_list)
-
-        # pycharm doesn't like the converter type
-        # noinspection PyTypeChecker
-        total = await self.get_total(author_id=None, word=word)
-
         embed = Embed(title=title, description=content)
-        embed.set_footer(text=f"Total {total}")
-        await ctx.send(embed=embed)
+        embed.set_footer(text=f"Total {total}", icon_url=ctx.guild.icon.url)
+        await ctx.send(embed=embed, allowed_mentions=MENTION_NONE)
 
     @commands.command(hidden=True)
     @commands.has_role(ROLE_DEVELOPER)
