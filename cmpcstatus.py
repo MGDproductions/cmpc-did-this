@@ -70,8 +70,9 @@ FGW_HIDE_TIME = datetime.time(hour=0, minute=5, tzinfo=TZ_AMSTERDAM)
 COUNTDOWN_MINUTE = 60
 
 PROFANITY_INTERCEPT = (":3",)
-PROFANITY_ROWS = 5
-PROFANITY_INLINE = False
+PROFANITY_ROWS_DEFAULT = 5
+PROFANITY_ROWS_MAX = 100
+PROFANITY_ROWS_INLINE = False
 
 COMMAND_PREFIX = [
     "random ",  # space is needed
@@ -449,17 +450,31 @@ class ProfanityLeaderboard(commands.Cog):
             total = rows[0][0]
         return total
 
+    @staticmethod
+    def limit_rows(rows: Optional[int]) -> tuple[int, bool]:
+        if rows is None:
+            rows = PROFANITY_ROWS_DEFAULT
+            inline = PROFANITY_ROWS_INLINE
+        else:
+            rows = min(rows, PROFANITY_ROWS_MAX)
+            inline = not PROFANITY_ROWS_INLINE
+        return rows, inline
+
     @commands.hybrid_command(aliases=("leaderboard", "lb"))
-    async def leaderboard_person(self, ctx: Context, person: Optional[Member]):
+    async def leaderboard_person(
+        self, ctx: Context, person: Optional[Member], rows: int = None
+    ):
         embed = discord.Embed()
+        rows, inline = self.limit_rows(rows)
+        arg = {"rows": rows}
+
         if person is not None:
             where = "WHERE author_id=:author_id"
-            arg = {"author_id": person.id}
+            arg["author_id"] = person.id
             embed.set_author(name=person.name, icon_url=person.display_avatar.url)
             total = await self.get_total(author_id=person.id, word=None)
         else:
             where = ""
-            arg = {}
             guild = ctx.guild
             icon_url = guild.icon.url if guild.icon is not None else None
             embed.set_author(name=guild.name, icon_url=icon_url)
@@ -470,30 +485,36 @@ class ProfanityLeaderboard(commands.Cog):
                 SELECT word, COUNT(*) AS num FROM lb
                 {where}
                 GROUP BY word ORDER BY num DESC
-                LIMIT {PROFANITY_ROWS};
+                LIMIT :rows;
                 """
         async with self.conn.execute_fetchall(query, arg) as rows:
             for word, count in rows:
-                embed.add_field(name=count, value=word, inline=PROFANITY_INLINE)
+                embed.add_field(name=count, value=word, inline=inline)
 
         await ctx.send(embed=embed, allowed_mentions=MENTION_NONE)
 
     # lock bicking lawyer
     @commands.hybrid_command(aliases=("leaderblame", "lbl"))
-    async def leaderboard_word(self, ctx: Context, word: Optional[ProfanityConverter]):
+    async def leaderboard_word(
+        self,
+        ctx: Context,
+        word: Optional[ProfanityConverter],
+        rows: int = None,
+    ):
         """whodunnit?"""
         embed = discord.Embed()
         guild = ctx.guild
         icon_url = guild.icon.url if guild.icon is not None else None
+        rows, inline = self.limit_rows(rows)
+        arg = {"rows": rows}
 
         if word is not None:
             where = "WHERE word=:word"
-            arg = {"word": word}
+            arg["word"] = word
             embed.set_author(name=word, icon_url=icon_url)
             total = await self.get_total(author_id=None, word=word)
         else:
             where = ""
-            arg = {}
             embed.set_author(name=guild.name, icon_url=icon_url)
             total = await self.get_total()
 
@@ -502,13 +523,11 @@ class ProfanityLeaderboard(commands.Cog):
                 SELECT author_id, COUNT(*) AS num FROM lb
                 {where}
                 GROUP BY author_id ORDER BY num DESC
-                LIMIT {PROFANITY_ROWS}
+                LIMIT :rows
                 """
         async with self.conn.execute_fetchall(query, arg) as rows:
             for author_id, count in rows:
-                embed.add_field(
-                    name=count, value=f"<@{author_id}>", inline=PROFANITY_INLINE
-                )
+                embed.add_field(name=count, value=f"<@{author_id}>", inline=inline)
         await ctx.send(embed=embed, allowed_mentions=MENTION_NONE)
 
     @commands.command(hidden=True)
