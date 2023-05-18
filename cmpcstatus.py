@@ -442,6 +442,40 @@ class ProfanityLeaderboard(commands.Cog):
     #              (MISSING) person count total
     # leaderboard: word count total
     #              word count for person
+    @commands.hybrid_command(aliases=("lb",))
+    async def leaderboard(self, ctx: Context, person: Optional[Member]):
+        # idk how this works but it sure does
+        # or, in sql language:
+        # IDK HOW this, WORKS BUT (it) SURE DOES
+        if person is not None:
+            query = """
+                        SELECT word, COUNT(*) AS num FROM lb
+                        WHERE author_id=:author_id
+                        GROUP BY word ORDER BY num DESC
+                        LIMIT 10;
+                        """
+            arg = {"author_id": person.id}
+            thumb = person.avatar.url
+            title = person.name
+            total = await self.get_total(author_id=person.id, word=None)
+        else:
+            query = """
+                        SELECT word, COUNT(*) AS num FROM lb
+                        GROUP BY word ORDER BY num DESC
+                        LIMIT 10;
+                        """
+            arg = {}
+            thumb = ctx.guild.icon.url
+            title = ctx.guild.name
+            total = await self.get_total(author_id=None, word=None)
+
+        async with self.conn.execute_fetchall(query, arg) as rows:
+            content = "\n".join(f"{r[0]} ({r[1]})" for r in rows)
+
+        embed = Embed(title=title, description=content)
+        embed.set_footer(text=f"Total {total}", icon_url=thumb)
+        await ctx.send(embed=embed)
+
     # lock bicking lawyer
     @commands.hybrid_command(aliases=("lbl",))
     async def leaderblame(self, ctx: Context, word: ProfanityConverter):
@@ -470,40 +504,6 @@ class ProfanityLeaderboard(commands.Cog):
         embed.set_footer(text=f"Total {total}")
         await ctx.send(embed=embed)
 
-    @commands.hybrid_command(aliases=("lb",))
-    async def leaderboard(self, ctx: Context, person: Optional[Member]):
-        # idk how this works but it sure does
-        # or, in sql language:
-        # IDK HOW this, WORKS BUT (it) SURE DOES
-        if person is not None:
-            query = """
-                    SELECT word, COUNT(*) AS num FROM lb
-                    WHERE author_id=:author_id
-                    GROUP BY word ORDER BY num DESC
-                    LIMIT 10;
-                    """
-            arg = {"author_id": person.id}
-            thumb = person.avatar.url
-            title = person.name
-            total = await self.get_total(author_id=person.id, word=None)
-        else:
-            query = """
-                    SELECT word, COUNT(*) AS num FROM lb
-                    GROUP BY word ORDER BY num DESC
-                    LIMIT 10;
-                    """
-            arg = {}
-            thumb = ctx.guild.icon.url
-            title = ctx.guild.name
-            total = await self.get_total(author_id=None, word=None)
-
-        async with self.conn.execute_fetchall(query, arg) as rows:
-            content = "\n".join(f"{r[0]} ({r[1]})" for r in rows)
-
-        embed = Embed(title=title, description=content)
-        embed.set_footer(text=f"Total {total}", icon_url=thumb)
-        await ctx.send(embed=embed)
-
     @commands.command(hidden=True)
     @commands.has_role(ROLE_DEVELOPER)
     async def backfill_database(
@@ -513,8 +513,6 @@ class ProfanityLeaderboard(commands.Cog):
         around: Optional[Message],
         *channels: discord.TextChannel,
     ):
-        status_interval = 1000
-
         for c in channels:
             status_message = await ctx.send(f"Loading history {c.mention}")
             count = 0
@@ -532,7 +530,7 @@ class ProfanityLeaderboard(commands.Cog):
                     swears += await self.process_profanity(message)
                 except aiosqlite.IntegrityError:
                     ignored += 1
-                if count % status_interval == 0:
+                if count % 1000 == 0:
                     await update_status()
             await update_status()
             await ctx.send(f"Loaded history {c.mention}")
