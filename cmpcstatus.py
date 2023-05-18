@@ -3,6 +3,7 @@
 import asyncio
 import datetime
 import logging
+import platform
 import random
 import sys
 import tomllib
@@ -30,6 +31,7 @@ INTENTS.message_content = True
 ENABLE_CLOCK = True
 ENABLE_FISH = True
 ENABLE_PROFANITY = True
+ENABLE_READY_MESSAGE = True
 ENABLE_WELCOME = True
 
 PATH_CONFIG = "config.toml"
@@ -42,6 +44,7 @@ ROLE_MEMBER = 932977796492427276
 ROLE_MODS = 725356663850270821
 TEXT_CHANNEL_FISH = 875297517351358474
 TEXT_CHANNEL_GENERAL = 714154159590473801
+TEXT_CHANNEL_READY = 736664393630220289
 VOICE_CHANNEL_CLOCK = 753467367966638100
 
 COLOUR_GREEN = discord.Color.green()
@@ -157,6 +160,10 @@ class CmpcDidThis(commands.Bot):
             )
         )
         log.info(f"Connected to discord as: %s", self.user)
+
+        if ENABLE_READY_MESSAGE:
+            ready_channel = self.get_channel(TEXT_CHANNEL_READY)
+            await ready_channel.send(f"Connected to discord from: `{platform.node()}`")
 
     async def close(self):
         log.info("Closing bot instance")
