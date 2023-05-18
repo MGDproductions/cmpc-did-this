@@ -106,17 +106,6 @@ def load_config(fp: str = PATH_CONFIG) -> BotConfig:
     return config
 
 
-async def tags(message: Message):
-    t = message.content.casefold()
-    for k, v in {
-        "el muchacho": "https://youtu.be/GdtuG-j9Xog",
-        "make that the cat wise": "https://cdn.discordapp.com/attachments/"
-        "736664393630220289/1098942081248010300/image.png",
-    }.items():
-        if k == t:
-            await message.channel.send(v)
-
-
 class CmpcDidThis(commands.Bot):
     def __init__(self, *args, **kwargs):
         self.config = load_config()
@@ -176,6 +165,12 @@ class CmpcDidThis(commands.Bot):
         log.info("Closed gracefully")
 
     # EVENTS
+    async def on_command_error(
+        self, ctx: Context, exception: commands.errors.CommandError
+    ):
+        await super().on_command_error(ctx, exception)
+        await ctx.send(str(exception))
+
     async def on_member_join(self, member: Member):
         role = utils.get(member.guild.roles, id=ROLE_MEMBER)
         await member.add_roles(role)
@@ -226,7 +221,15 @@ class CmpcDidThis(commands.Bot):
 
     async def on_message(self, message: Message):
         await super().on_message(message)
-        await tags(message)
+
+        t = message.content.casefold()
+        for k, v in {
+            "el muchacho": "https://youtu.be/GdtuG-j9Xog",
+            "make that the cat wise": "https://cdn.discordapp.com/attachments/"
+            "736664393630220289/1098942081248010300/image.png",
+        }.items():
+            if k == t:
+                await message.channel.send(v)
 
     # TASKS
     @tasks.loop(time=CLOCK_TIMES)
@@ -463,7 +466,7 @@ class ProfanityLeaderboard(commands.Cog):
 
     @commands.hybrid_command(aliases=("leaderboard", "lb"))
     async def leaderboard_person(
-        self, ctx: Context, person: Optional[Member], rows: int = None
+        self, ctx: Context, person: Optional[Member], rows: Optional[int]
     ):
         embed = discord.Embed()
         rows, inline = self.limit_rows(rows)
@@ -500,7 +503,7 @@ class ProfanityLeaderboard(commands.Cog):
         self,
         ctx: Context,
         word: Optional[ProfanityConverter],
-        rows: int = None,
+        rows: Optional[int],
     ):
         """whodunnit?"""
         embed = discord.Embed()
