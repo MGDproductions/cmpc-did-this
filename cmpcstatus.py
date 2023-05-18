@@ -566,26 +566,30 @@ class ProfanityLeaderboard(commands.Cog):
     @commands.has_role(ROLE_DEVELOPER)
     async def trim_database(self, ctx: Context):
         """Remove entries with deleted users."""
+        await ctx.send("Trimming")
         async with self.conn.execute_fetchall(
             "SELECT DISTINCT author_id FROM lb"
         ) as rows:
             authors = set(r[0] for r in rows)
+        await ctx.send(f"Got {len(authors)}")
 
         removed_authors = set()
         for author_id in authors:
             member = utils.get(ctx.guild.members, id=author_id)
             if member is None:
                 removed_authors.add(author_id)
+        await ctx.send(f"Removed {len(removed_authors)}")
 
         removed_display = ["Removed"]
         removed_display.extend(f"<@{a}>" for a in removed_authors)
-        await ctx.send(" ".join(removed_display))
+        log.info(" ".join(removed_display))
 
         await self.conn.executemany(
             "DELETE FROM lb WHERE author_id=:author_id",
             parameters=({"author_id": a} for a in removed_authors),
         )
         await self.conn.commit()
+        await ctx.send("Done trimming")
 
 
 # COMMANDS
