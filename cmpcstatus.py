@@ -561,6 +561,31 @@ class ProfanityLeaderboard(commands.Cog):
             await update_status()
             await ctx.send(f"Loaded history {c.mention}")
 
+    @commands.command(hidden=True)
+    @commands.has_role(ROLE_DEVELOPER)
+    async def trim_database(self, ctx: Context):
+        """Remove entries with deleted users."""
+        async with self.conn.execute_fetchall(
+            "SELECT DISTINCT author_id FROM lb"
+        ) as rows:
+            authors = set(r[0] for r in rows)
+
+        removed_authors = set()
+        for author_id in authors:
+            member = utils.get(ctx.guild.members, id=author_id)
+            if member is None:
+                removed_authors.add(author_id)
+
+        removed_display = ["Removed"]
+        removed_display.extend(f"<@{a}>" for a in removed_authors)
+        await ctx.send(" ".join(removed_display))
+
+        await self.conn.executemany(
+            "DELETE FROM lb WHERE author_id=:author_id",
+            parameters=({"author_id": a} for a in removed_authors),
+        )
+        await self.conn.commit()
+
 
 # COMMANDS
 @bot.hybrid_command(name="capybara", aliases=("capy",))
