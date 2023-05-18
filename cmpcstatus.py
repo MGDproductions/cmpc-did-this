@@ -29,6 +29,7 @@ INTENTS.message_content = True
 
 ENABLE_CLOCK = True
 ENABLE_FISH = True
+ENABLE_PROFANITY = True
 ENABLE_WELCOME = True
 
 PATH_CONFIG = "config.toml"
@@ -65,14 +66,16 @@ FGW_HIDE_TIME = datetime.time(hour=0, minute=5, tzinfo=TZ_AMSTERDAM)
 # how many seconds in a minute
 COUNTDOWN_MINUTE = 60
 
+PROFANITY_INTERCEPT = (":3",)
+PROFANITY_ROWS = 5
+PROFANITY_INLINE = False
+
 COMMAND_PREFIX = [
     "random ",  # space is needed
     "cmpc.",
     "c.",
     "$",
 ]
-
-PROFANITY_INTERCEPT = (":3",)
 
 
 log = logging.getLogger(__name__)
@@ -132,7 +135,8 @@ class CmpcDidThis(commands.Bot):
         self.session = aiohttp.ClientSession()
 
         # add default cogs
-        await self.add_cog(ProfanityLeaderboard())
+        if ENABLE_PROFANITY:
+            await self.add_cog(ProfanityLeaderboard())
         await self.add_cog(DeveloperCommands())
 
         print("done")  # this line is needed to work with ptero
@@ -384,11 +388,9 @@ class ProfanityLeaderboard(commands.Cog):
     async def cog_unload(self):
         await self.conn.close()
 
-    @commands.Cog.listener()
-    async def on_message(self, message: Message):
-        await self.process_profanity(message)
-
+    @commands.Cog.listener(name="on_message")
     async def process_profanity(self, message: Message) -> int:
+        """Return the number of swears added to the database."""
         lower = message.content.casefold()
         mwords = lower.split()
         profanity_array = profanity_predict(mwords)
@@ -414,7 +416,6 @@ class ProfanityLeaderboard(commands.Cog):
             ),
         )
         await self.conn.commit()
-
         return len(swears)
 
     class ProfanityConverter(commands.Converter[str]):
@@ -447,7 +448,7 @@ class ProfanityLeaderboard(commands.Cog):
             where = "WHERE author_id=:author_id"
             arg = {"author_id": person.id}
             title = person.name
-            thumb = person.avatar.url
+            thumb = person.display_avatar.url
             total = await self.get_total(author_id=person.id, word=None)
         else:
             where = ""
@@ -459,15 +460,14 @@ class ProfanityLeaderboard(commands.Cog):
                 SELECT word, COUNT(*) AS num FROM lb
                 {where}
                 GROUP BY word ORDER BY num DESC
-                LIMIT 10;
+                LIMIT {PROFANITY_ROWS};
                 """
 
+        embed = Embed(title=f"Total: {total}")
+        embed.set_footer(text=title, icon_url=thumb)
         async with self.conn.execute_fetchall(query, arg) as rows:
-            content_list = [f"{word} ({count})" for word, count in rows]
-
-        content = "\n".join(content_list)
-        embed = Embed(title=title, description=content)
-        embed.set_footer(text=f"Total {total}", icon_url=thumb)
+            for word, count in rows:
+                embed.add_field(name=count, value=word, inline=PROFANITY_INLINE)
         await ctx.send(embed=embed, allowed_mentions=MENTION_NONE)
 
     # lock bicking lawyer
@@ -488,15 +488,16 @@ class ProfanityLeaderboard(commands.Cog):
                 SELECT author_id, COUNT(*) AS num FROM lb
                 {where}
                 GROUP BY author_id ORDER BY num DESC
-                LIMIT 10;
+                LIMIT {PROFANITY_ROWS}
                 """
 
+        embed = Embed(title=f"Total: {total}")
+        embed.set_footer(text=title, icon_url=ctx.guild.icon.url)
         async with self.conn.execute_fetchall(query, arg) as rows:
-            content_list = [f"<@{author_id}> ({count})" for author_id, count in rows]
-
-        content = "\n".join(content_list)
-        embed = Embed(title=title, description=content)
-        embed.set_footer(text=f"Total {total}", icon_url=ctx.guild.icon.url)
+            for author_id, count in rows:
+                embed.add_field(
+                    name=count, value=f"<@{author_id}>", inline=PROFANITY_INLINE
+                )
         await ctx.send(embed=embed, allowed_mentions=MENTION_NONE)
 
     @commands.command(hidden=True)
