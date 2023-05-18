@@ -5,6 +5,7 @@ import datetime
 import logging
 import platform
 import random
+import subprocess
 import sys
 import tomllib
 import urllib.parse
@@ -704,6 +705,11 @@ class DeveloperCommands(commands.Cog):
         }
         member = member or ctx.author
         await events[event](member)
+
+    @commands.command(hidden=True)
+    async def git_last(self, ctx: Context):
+        stdout = subprocess.check_output(["git", "log", "--max-count=1"], text=True)
+        await ctx.send(f"```{stdout}```")
 
 
 def main():
