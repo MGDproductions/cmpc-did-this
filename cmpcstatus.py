@@ -531,7 +531,9 @@ class ProfanityLeaderboard(commands.Cog):
                 """
         async with self.conn.execute_fetchall(query, arg) as rows:
             for author_id, count in rows:
-                embed.add_field(name=count, value=f"<@{author_id}>", inline=inline)
+                member = utils.get(guild.members, id=author_id)
+                mention = f"<@{author_id}>" if member is None else member.mention
+                embed.add_field(name=count, value=mention, inline=inline)
         await ctx.send(embed=embed, allowed_mentions=MENTION_NONE)
 
     @commands.command(hidden=True)
@@ -573,23 +575,18 @@ class ProfanityLeaderboard(commands.Cog):
         async with self.conn.execute_fetchall(
             "SELECT DISTINCT author_id FROM lb"
         ) as rows:
-            authors = set(r[0] for r in rows)
-        await ctx.send(f"Got {len(authors)}")
+            author_ids = frozenset(r[0] for r in rows)
+        await ctx.send(f"Database {len(author_ids)}")
 
-        removed_authors = set()
-        for author_id in authors:
-            member = utils.get(ctx.guild.members, id=author_id)
-            if member is None:
-                removed_authors.add(author_id)
-        await ctx.send(f"Removed {len(removed_authors)}")
-
-        removed_display = ["Removed"]
-        removed_display.extend(f"<@{a}>" for a in removed_authors)
-        log.info(" ".join(removed_display))
+        member_ids = frozenset(m.id for m in ctx.guild.members)
+        await ctx.send(f"Guild {len(member_ids)}")
+        # set magic
+        missing_author_ids = author_ids - (member_ids & author_ids)
+        await ctx.send(f"Removing {len(missing_author_ids)}")
 
         await self.conn.executemany(
             "DELETE FROM lb WHERE author_id=:author_id",
-            parameters=({"author_id": a} for a in removed_authors),
+            parameters=({"author_id": a} for a in missing_author_ids),
         )
         await self.conn.commit()
         await ctx.send("Done trimming")
