@@ -49,6 +49,10 @@ TEXT_CHANNEL_GENERAL = 714154159590473801
 TEXT_CHANNEL_READY = 736664393630220289
 VOICE_CHANNEL_CLOCK = 753467367966638100
 
+CHANNEL_PERMISSIONS_OPEN = {"view_channel": True, "send_messages": True}
+CHANNEL_PERMISSIONS_LOCKED = {"view_channel": True, "send_messages": False}
+CHANNEL_PERMISSIONS_HIDDEN = {"view_channel": False, "send_messages": False}
+
 COLOUR_GREEN = discord.Color.green()
 COLOUR_RED = discord.Color.red()
 COLOUR_BLUE = discord.Color.blue()
@@ -114,9 +118,6 @@ class CmpcDidThis(commands.Bot):
     def __init__(self, *args, **kwargs):
         self.config = load_config()
         self.session: Optional[aiohttp.ClientSession] = None
-        self.tasks: list[tasks.Loop] = []
-        if ENABLE_CLOCK:
-            self.tasks.append(self.clock)
         super().__init__(*args, **kwargs)
 
     # SETUP
@@ -136,9 +137,9 @@ class CmpcDidThis(commands.Bot):
 
     async def on_ready(self):
         # start task loops
-        for t in self.tasks:
-            if not t.is_running():
-                t.start()
+        if ENABLE_CLOCK:
+            if not self.clock.is_running():
+                self.clock.start()
         # upload slash commands
         server = self.get_guild(GUILD_EGGYBOI)
         self.tree.copy_global_to(guild=server)
@@ -159,8 +160,8 @@ class CmpcDidThis(commands.Bot):
         log.info("Closing bot instance")
         await super().close()
         await self.session.close()
-        for t in self.tasks:
-            t.stop()
+        if self.clock.is_running():
+            self.clock.stop()
         log.info("Closed gracefully")
 
     # EVENTS
@@ -247,6 +248,22 @@ class BotCog(commands.Cog):
 
 
 class FishGamingWednesday(BotCog):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.tasks = (
+            self.fgw_start,
+            self.fgw_end,
+            self.fgw_hide,
+        )
+
+    async def cog_load(self):
+        for t in self.tasks:
+            t.start()
+
+    async def cog_unload(self):
+        for t in self.tasks:
+            t.stop()
+
     @staticmethod
     def is_today(day: int) -> bool:
         datetime_amsterdam = datetime.datetime.now(TZ_AMSTERDAM)
@@ -269,17 +286,11 @@ class FishGamingWednesday(BotCog):
         channel = self.get_fish_channel()
 
         perms = channel.overwrites_for(channel.guild.default_role)
-        # todo extract constant
-        perms.update(
-            view_channel=True,
-            send_messages=True,
-        )
+        perms.update(**CHANNEL_PERMISSIONS_OPEN)
         await channel.set_permissions(
             channel.guild.default_role, overwrite=perms, reason="fgw_start"
         )
-        await channel.send(
-            f"<@&{ROLE_FISH}>", file=discord.File("assets/fgw.mp4")
-        )
+        await channel.send(f"<@&{ROLE_FISH}>", file=discord.File("assets/fgw.mp4"))
 
     @tasks.loop(time=TIME_FGW_END)
     async def fgw_end(self):
@@ -291,9 +302,7 @@ class FishGamingWednesday(BotCog):
 
         # set channel to read-only
         perms = channel.overwrites_for(channel.guild.default_role)
-        perms.update(
-            send_messages=False,
-        )
+        perms.update(**CHANNEL_PERMISSIONS_LOCKED)
         await channel.set_permissions(
             channel.guild.default_role, overwrite=perms, reason="fgw_end"
         )
@@ -327,7 +336,7 @@ class FishGamingWednesday(BotCog):
 
         # hide channel
         perms = channel.overwrites_for(channel.guild.default_role)
-        perms.update(view_channel=False)
+        perms.update(**CHANNEL_PERMISSIONS_HIDDEN)
         await channel.set_permissions(
             channel.guild.default_role, overwrite=perms, reason="fgw_end_final"
         )
@@ -600,7 +609,9 @@ class BasicCommands(BotCog):
     async def random_capybara(self, ctx: Context):
         """gives you a random capybara"""
         async with ctx.typing():
-            async with ctx.bot.session.get("https://api.capy.lol/v1/capybara") as response:
+            async with ctx.bot.session.get(
+                "https://api.capy.lol/v1/capybara"
+            ) as response:
                 fp = BytesIO(await response.content.read())
             embed = Embed(title="capybara for u!", color=COLOUR_RED)
             filename = "capybara.png"
@@ -698,10 +709,14 @@ class DeveloperCommands(BotCog):
         await ctx.send(message)
 
         config = self.bot.config
-        url = f"{config.ptero_address}/api/client/servers/{config.ptero_server_id}/power"
+        url = (
+            f"{config.ptero_address}/api/client/servers/{config.ptero_server_id}/power"
+        )
         payload = {"signal": signal}
         headers = {"Authorization": f"Bearer {config.ptero_token}"}
-        async with self.bot.session.post(url, json=payload, headers=headers) as response:
+        async with self.bot.session.post(
+            url, json=payload, headers=headers
+        ) as response:
             response.raise_for_status()
 
     @commands.command(hidden=True)
