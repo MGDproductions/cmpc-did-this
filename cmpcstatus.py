@@ -60,6 +60,8 @@ CHANNEL_PERMISSIONS_HIDDEN = {"view_channel": False, "send_messages": False}
 COLOUR_GREEN = discord.Color.green()
 COLOUR_RED = discord.Color.red()
 COLOUR_BLUE = discord.Color.blue()
+
+EMOJI_BIBI_PARTY = discord.PartialEmoji.from_str("<:bibi_party:857659475687374898>")
 EMOJI_SAT_CAT = discord.PartialEmoji.from_str("<:sad_cat:770191103310823426>")
 EMOJI_SKULL = discord.PartialEmoji.from_str("💀")
 
@@ -380,9 +382,9 @@ class Birthday(BotCog):
 
         file = discord.File("assets/birthday.mp4")
         await channel.send(
-            "@everyone It's Marcel's birthday today!"
+            f"{EMOJI_BIBI_PARTY}{EMOJI_BIBI_PARTY}{EMOJI_BIBI_PARTY} @everyone It's Marcel's birthday today!"
             " As a birthday gift he wants all the cat pictures in the world."
-            " Drop them in this chat before he wakes up!",
+            F" Drop them in this chat before he wakes up!{EMOJI_BIBI_PARTY}{EMOJI_BIBI_PARTY}{EMOJI_BIBI_PARTY}",
             file=file,
         )
 
