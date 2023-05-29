@@ -726,8 +726,9 @@ class BasicCommands(BotCog):
     async def say(self, ctx: Context, *, text: str):
         return await ctx.send(text)
 
-    @commands.command(aliases=("code", "git", "github"))
+    @commands.hybrid_command(aliases=("code", "git", "github"))
     async def source(self, ctx: Context, upload: bool = False):
+        """Send the source code for this boy."""
         message = await ctx.send("https://github.com/MDproductions-dev/cmpc-did-this")
 
         if upload:
@@ -737,6 +738,22 @@ class BasicCommands(BotCog):
                     file.seek(0)
                     discord_file = discord.File(file, filename="source.zip")
                     await message.reply(file=discord_file)
+
+    async def ping_url(self, url: str):
+        async with self.bot.session.head(url) as r:
+            r.raise_for_status()
+
+    @commands.hybrid_command(aliases=("http", "httpcat"))
+    async def http_cat(self, ctx: Context, status_code: int):
+        url = f"https://http.cat/{status_code}.jpg"
+        await self.ping_url(url)
+        await ctx.send(url)
+
+    @commands.hybrid_command(aliases=("httpdog",))
+    async def http_dog(self, ctx: Context, status_code: int):
+        url = f"https://httpstatusdogs.com/img/{status_code}.jpg"
+        await self.ping_url(url)
+        await ctx.send(url)
 
     # todo? command to invoke another command and delete the invoking message
     # @commands.command(hidden=True)
