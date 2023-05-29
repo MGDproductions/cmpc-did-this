@@ -10,6 +10,7 @@ import sys
 import tomllib
 import urllib.parse
 from io import BytesIO
+from tempfile import TemporaryFile
 from typing import Literal, Optional
 from zoneinfo import ZoneInfo
 
@@ -23,9 +24,6 @@ from discord.ext.commands import Context
 from PIL import Image, ImageDraw, ImageFont
 
 from assets.words import common_words
-
-
-# todo AGPL?
 
 
 # CONSTANTS
@@ -727,6 +725,17 @@ class BasicCommands(BotCog):
     @commands.is_owner()
     async def say(self, ctx: Context, *, text: str):
         return await ctx.send(text)
+
+    @commands.command(aliases=("github", "git"))
+    async def source(self, ctx: Context, upload: bool = False):
+        await ctx.send("https://github.com/MDproductions-dev/cmpc-did-this")
+
+        if upload:
+            with TemporaryFile() as file:
+                subprocess.run(["git", "archive", "--format=zip", "HEAD"], stdout=file)
+                file.seek(0)
+                discord_file = discord.File(file, filename="source.zip")
+                await ctx.send(file=discord_file)
 
     # todo? command to invoke another command and delete the invoking message
     # @commands.command(hidden=True)
