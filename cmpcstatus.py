@@ -24,6 +24,11 @@ from PIL import Image, ImageDraw, ImageFont
 
 from assets.words import common_words
 
+
+# todo update deps
+# todo AGPL?
+
+
 # CONSTANTS
 INTENTS = discord.Intents.default()
 INTENTS.members = True
@@ -44,6 +49,8 @@ ROLE_DEVELOPER = 741317598452645949
 ROLE_FISH = 875359516131209256
 ROLE_MEMBER = 932977796492427276
 ROLE_MODS = 725356663850270821
+
+TEXT_CHANNEL_BIRTHDAY = 982687737503182858
 TEXT_CHANNEL_FISH = 875297517351358474
 TEXT_CHANNEL_GENERAL = 714154159590473801
 TEXT_CHANNEL_READY = 736664393630220289
@@ -71,10 +78,12 @@ CLOCK_TIMES = [
 ]
 TIME_MIDNIGHT = datetime.time(hour=0, tzinfo=TZ_AMSTERDAM)
 TIME_FGW_START = TIME_MIDNIGHT
-TIME_FGW_END = TIME_MIDNIGHT
+TIME_FGW_LOCK = TIME_MIDNIGHT
+TIME_FGW_END = datetime.time(hour=0, minute=5, tzinfo=TZ_AMSTERDAM)
 TIME_BIRTHDAY_START = TIME_MIDNIGHT
 TIME_BIRTHDAY_END = TIME_MIDNIGHT
-TIME_FGW_HIDE = datetime.time(hour=0, minute=5, tzinfo=TZ_AMSTERDAM)
+DATE_BIRTHDAY_MONTH = 6
+DATE_BIRTHDAY_DAY = 5
 # how many seconds in a minute
 COUNTDOWN_MINUTE = 60
 
@@ -128,10 +137,12 @@ class CmpcDidThis(commands.Bot):
         # add default cogs
         await self.add_cog(BasicCommands(self))
         await self.add_cog(DeveloperCommands(self))
+        if ENABLE_BIRTHDAY:
+            await self.add_cog(Birthday(self))
         if ENABLE_FISH:
             await self.add_cog(FishGamingWednesday(self))
         if ENABLE_PROFANITY:
-            await self.add_cog(ProfanityLeaderboard())
+            await self.add_cog(ProfanityLeaderboard(self))
 
         print("done")  # this line is needed to work with ptero
 
@@ -252,8 +263,8 @@ class FishGamingWednesday(BotCog):
         super().__init__(*args, **kwargs)
         self.tasks = (
             self.fgw_start,
+            self.fgw_lock,
             self.fgw_end,
-            self.fgw_hide,
         )
 
     async def cog_load(self):
@@ -292,8 +303,8 @@ class FishGamingWednesday(BotCog):
         )
         await channel.send(f"<@&{ROLE_FISH}>", file=discord.File("assets/fgw.mp4"))
 
-    @tasks.loop(time=TIME_FGW_END)
-    async def fgw_end(self):
+    @tasks.loop(time=TIME_FGW_LOCK)
+    async def fgw_lock(self):
         # only run on thursday (end of wednesday)
         if not self.is_today(ISO_WEEKDAY_THURSDAY):
             return
@@ -304,7 +315,7 @@ class FishGamingWednesday(BotCog):
         perms = channel.overwrites_for(channel.guild.default_role)
         perms.update(**CHANNEL_PERMISSIONS_LOCKED)
         await channel.set_permissions(
-            channel.guild.default_role, overwrite=perms, reason="fgw_end"
+            channel.guild.default_role, overwrite=perms, reason="fgw_lock"
         )
 
         # create countdown message
@@ -327,8 +338,8 @@ class FishGamingWednesday(BotCog):
         embed.remove_field(0)
         await message.edit(embed=embed)
 
-    @tasks.loop(time=TIME_FGW_HIDE)
-    async def fgw_hide(self):
+    @tasks.loop(time=TIME_FGW_END)
+    async def fgw_end(self):
         if not self.is_today(ISO_WEEKDAY_THURSDAY):
             return
         log.info("fish gaming wednesday ended")
@@ -338,11 +349,46 @@ class FishGamingWednesday(BotCog):
         perms = channel.overwrites_for(channel.guild.default_role)
         perms.update(**CHANNEL_PERMISSIONS_HIDDEN)
         await channel.set_permissions(
-            channel.guild.default_role, overwrite=perms, reason="fgw_end_final"
+            channel.guild.default_role, overwrite=perms, reason="fgw_end"
         )
 
 
-# BOT SETUP
+class Birthday(BotCog):
+    async def cog_load(self):
+        self.birthday_start.start()
+
+    async def cog_unload(self):
+        self.birthday_start.stop()
+
+    @staticmethod
+    def is_date(month: int, day: int) -> bool:
+        datetime_amsterdam = datetime.datetime.now(TZ_AMSTERDAM)
+        result = (month, day) == (datetime_amsterdam.month, datetime_amsterdam.day)
+        log.info("date check %d-%d : %s : %s", month, day, datetime_amsterdam, result)
+        return result
+
+    @tasks.loop(time=TIME_BIRTHDAY_START)
+    async def birthday_start(self):
+        if not self.is_date(DATE_BIRTHDAY_MONTH, DATE_BIRTHDAY_DAY):
+            return
+        log.info("Marcel's birthday started")
+        channel = self.bot.get_channel(TEXT_CHANNEL_BIRTHDAY)
+
+        perms = channel.overwrites_for(channel.guild.default_role)
+        perms.update(**CHANNEL_PERMISSIONS_OPEN)
+        await channel.set_permissions(
+            channel.guild.default_role, overwrite=perms, reason="birthday_start"
+        )
+
+        file = discord.File("assets/birthday.mp4")
+        await channel.send(
+            "@everyone It's Marcel's birthday today!"
+            " As a birthday gift he wants all the cat pictures in the world."
+            " Drop them in this chat before he wakes up!",
+            file=file,
+        )
+
+
 class BotHelpCommand(commands.DefaultHelpCommand):
     async def send_bot_help(self, mapping: dict, /):
         ctx = self.context
@@ -383,7 +429,7 @@ def profanity_predict(words: list[str]) -> list[bool]:
     return profanity_array
 
 
-class ProfanityLeaderboard(commands.Cog):
+class ProfanityLeaderboard(BotCog):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -683,7 +729,7 @@ class BasicCommands(BotCog):
     async def say(self, ctx: Context, *, text: str):
         return await ctx.send(text)
 
-    # todo?
+    # todo? command to invoke another command and delete the invoking message
     # @commands.command(hidden=True)
     # @commands.has_role(MOD_ROLE)
     # async def hide(ctx: Context, *, invocation):
