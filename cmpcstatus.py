@@ -117,14 +117,6 @@ class CmpcDidThis(commands.Bot):
         self.tasks: list[tasks.Loop] = []
         if ENABLE_CLOCK:
             self.tasks.append(self.clock)
-        if ENABLE_FISH:
-            self.tasks.extend(
-                (
-                    self.fgw_start,
-                    self.fgw_end,
-                    self.fgw_hide,
-                )
-            )
         super().__init__(*args, **kwargs)
 
     # SETUP
@@ -133,9 +125,12 @@ class CmpcDidThis(commands.Bot):
         self.session = aiohttp.ClientSession()
 
         # add default cogs
+        await self.add_cog(BasicCommands(self))
+        await self.add_cog(DeveloperCommands(self))
+        if ENABLE_FISH:
+            await self.add_cog(FishGamingWednesday(self))
         if ENABLE_PROFANITY:
             await self.add_cog(ProfanityLeaderboard())
-        await self.add_cog(DeveloperCommands())
 
         print("done")  # this line is needed to work with ptero
 
@@ -244,6 +239,14 @@ class CmpcDidThis(commands.Bot):
         channel = self.get_channel(VOICE_CHANNEL_CLOCK)
         await channel.edit(name=ams_time)
 
+
+class BotCog(commands.Cog):
+    def __init__(self, bot: CmpcDidThis, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.bot = bot
+
+
+class FishGamingWednesday(BotCog):
     @staticmethod
     def is_today(day: int) -> bool:
         datetime_amsterdam = datetime.datetime.now(TZ_AMSTERDAM)
@@ -252,7 +255,7 @@ class CmpcDidThis(commands.Bot):
         return result
 
     def get_fish_channel(self) -> discord.TextChannel:
-        channel = self.get_channel(TEXT_CHANNEL_FISH)
+        channel = self.bot.get_channel(TEXT_CHANNEL_FISH)
         if channel is None:
             raise ValueError(f"Could not find channel {TEXT_CHANNEL_FISH}")
         return channel
@@ -266,6 +269,7 @@ class CmpcDidThis(commands.Bot):
         channel = self.get_fish_channel()
 
         perms = channel.overwrites_for(channel.guild.default_role)
+        # todo extract constant
         perms.update(
             view_channel=True,
             send_messages=True,
@@ -359,14 +363,6 @@ def command_prefix(bot_: CmpcDidThis, message: Message) -> list[str]:
         if possible.startswith(prefix):
             return [message_start[:length]]
     return commands.when_mentioned(bot_, message)
-
-
-bot = CmpcDidThis(
-    case_insensitive=True,
-    command_prefix=command_prefix,
-    intents=INTENTS,
-    help_command=BotHelpCommand(),
-)
 
 
 # wraps the library to make it easier to swap out
@@ -599,99 +595,92 @@ class ProfanityLeaderboard(commands.Cog):
 
 
 # COMMANDS
-@bot.hybrid_command(name="capybara", aliases=("capy",))
-async def random_capybara(ctx: Context):
-    """gives you a random capybara"""
-    async with ctx.typing():
-        async with ctx.bot.session.get("https://api.capy.lol/v1/capybara") as response:
-            fp = BytesIO(await response.content.read())
-        embed = Embed(title="capybara for u!", color=COLOUR_RED)
-        filename = "capybara.png"
-        file = discord.File(fp, filename=filename)
-        embed.set_image(url=f"attachment://{filename}")
-    await ctx.send(embed=embed, file=file)
+class BasicCommands(BotCog):
+    @commands.hybrid_command(name="capybara", aliases=("capy",))
+    async def random_capybara(self, ctx: Context):
+        """gives you a random capybara"""
+        async with ctx.typing():
+            async with ctx.bot.session.get("https://api.capy.lol/v1/capybara") as response:
+                fp = BytesIO(await response.content.read())
+            embed = Embed(title="capybara for u!", color=COLOUR_RED)
+            filename = "capybara.png"
+            file = discord.File(fp, filename=filename)
+            embed.set_image(url=f"attachment://{filename}")
+        await ctx.send(embed=embed, file=file)
+
+    @commands.hybrid_command(name="cat")
+    async def random_cat(self, ctx: Context):
+        """gives you a random cat"""
+        async with ctx.typing():
+            async with ctx.bot.session.get("https://cataas.com/cat") as response:
+                fp = BytesIO(await response.content.read())
+            embed = Embed(title="cat for u!", color=COLOUR_RED)
+            filename = "cat.png"
+            file = discord.File(fp, filename=filename)
+            embed.set_image(url=f"attachment://{filename}")
+        await ctx.send(embed=embed, file=file)
+
+    @commands.hybrid_command(name="game")
+    async def random_game(self, ctx: Context):
+        """gives you a random game"""
+        async with ctx.bot.session.get(
+            "https://store.steampowered.com/explore/random/"
+        ) as response:
+            shorten = str(response.url).removesuffix("?snr=1_239_random_")
+        await ctx.send(shorten)
+
+    @commands.hybrid_command(name="gif", aliases=("g",))
+    async def random_gif(self, ctx: Context, *, search: Optional[str]):
+        """gives you a random gif"""
+        async with ctx.typing():
+            if search is None:
+                search = random.choice(common_words)
+            search = urllib.parse.quote_plus(search.encode(encoding="utf-8"))
+
+            # https://developers.google.com/tenor/guides/endpoints
+            # I love the new Google State!
+            search_url = (
+                "https://tenor.googleapis.com/v2/search?key={}&q={}&random=true&limit=1"
+            )
+            search_random = search_url.format(self.bot.config.tenor_token, search)
+            async with ctx.bot.session.get(search_random) as request:
+                request.raise_for_status()
+                random_json = await request.json()
+            results = random_json["results"]
+            gif = results[0]
+            url = gif["url"]
+
+        await ctx.send(url)
+
+    @commands.hybrid_command(name="number")
+    async def random_number(self, ctx: Context, startnumber: int, endnumber: int):
+        """gives you a random number"""
+        randomnumber = random.randint(startnumber, endnumber)
+        await ctx.send(f"{randomnumber}")
+
+    @commands.hybrid_command(name="word")
+    async def random_word(self, ctx: Context):
+        """gives you a random word"""
+        return await ctx.send(random.choice(common_words))
+
+    @commands.command(hidden=True)
+    async def testconn(self, ctx: Context):
+        return await ctx.send("hi there dude!")
+
+    @commands.command(hidden=True)
+    @commands.is_owner()
+    async def say(self, ctx: Context, *, text: str):
+        return await ctx.send(text)
+
+    # todo?
+    # @commands.command(hidden=True)
+    # @commands.has_role(MOD_ROLE)
+    # async def hide(ctx: Context, *, invocation):
+    #     message = ctx.
+    #     return await bot.process_commands()
 
 
-@bot.hybrid_command(name="cat")
-async def random_cat(ctx: Context):
-    """gives you a random cat"""
-    async with ctx.typing():
-        async with ctx.bot.session.get("https://cataas.com/cat") as response:
-            fp = BytesIO(await response.content.read())
-        embed = Embed(title="cat for u!", color=COLOUR_RED)
-        filename = "cat.png"
-        file = discord.File(fp, filename=filename)
-        embed.set_image(url=f"attachment://{filename}")
-    await ctx.send(embed=embed, file=file)
-
-
-@bot.hybrid_command(name="game")
-async def random_game(ctx: Context):
-    """gives you a random game"""
-    async with ctx.bot.session.get(
-        "https://store.steampowered.com/explore/random/"
-    ) as response:
-        shorten = str(response.url).removesuffix("?snr=1_239_random_")
-    await ctx.send(shorten)
-
-
-@bot.hybrid_command(name="gif", aliases=("g",))
-async def random_gif(ctx: Context, *, search: Optional[str]):
-    """gives you a random gif"""
-    async with ctx.typing():
-        if search is None:
-            search = random.choice(common_words)
-        search = urllib.parse.quote_plus(search.encode(encoding="utf-8"))
-
-        # https://developers.google.com/tenor/guides/endpoints
-        # I love the new Google State!
-        search_url = (
-            "https://tenor.googleapis.com/v2/search?key={}&q={}&random=true&limit=1"
-        )
-        search_random = search_url.format(bot.config.tenor_token, search)
-        async with ctx.bot.session.get(search_random) as request:
-            request.raise_for_status()
-            random_json = await request.json()
-        results = random_json["results"]
-        gif = results[0]
-        url = gif["url"]
-
-    await ctx.send(url)
-
-
-@bot.hybrid_command(name="number")
-async def random_number(ctx: Context, startnumber: int, endnumber: int):
-    """gives you a random number"""
-    randomnumber = random.randint(startnumber, endnumber)
-    await ctx.send(f"{randomnumber}")
-
-
-@bot.hybrid_command(name="word")
-async def random_word(ctx: Context):
-    """gives you a random word"""
-    return await ctx.send(random.choice(common_words))
-
-
-@bot.command(hidden=True)
-async def testconn(ctx: Context):
-    return await ctx.send("hi there dude!")
-
-
-# PRIVILEGED COMMANDS
-@bot.command(hidden=True)
-@commands.is_owner()
-async def say(ctx: Context, *, text: str):
-    return await ctx.send(text)
-
-
-# @bot.command(hidden=True)
-# @commands.has_role(MOD_ROLE)
-# async def hide(ctx: Context, *, invocation):
-#     message = ctx.
-#     return await bot.process_commands()
-
-
-class DeveloperCommands(commands.Cog):
+class DeveloperCommands(BotCog):
     def cog_check(self, ctx: Context) -> bool:
         # see discord.commands.has_role
         if ctx.guild is None:
@@ -708,10 +697,11 @@ class DeveloperCommands(commands.Cog):
         log.info(message)
         await ctx.send(message)
 
-        url = f"{bot.config.ptero_address}/api/client/servers/{bot.config.ptero_server_id}/power"
+        config = self.bot.config
+        url = f"{config.ptero_address}/api/client/servers/{config.ptero_server_id}/power"
         payload = {"signal": signal}
-        headers = {"Authorization": f"Bearer {bot.config.ptero_token}"}
-        async with bot.session.post(url, json=payload, headers=headers) as response:
+        headers = {"Authorization": f"Bearer {config.ptero_token}"}
+        async with self.bot.session.post(url, json=payload, headers=headers) as response:
             response.raise_for_status()
 
     @commands.command(hidden=True)
@@ -723,8 +713,8 @@ class DeveloperCommands(commands.Cog):
     ):
         log.info("Test event (%s) %s", member, event)
         events = {
-            "join": bot.on_member_join,
-            "remove": bot.on_member_remove,
+            "join": self.bot.on_member_join,
+            "remove": self.bot.on_member_remove,
         }
         member = member or ctx.author
         await events[event](member)
@@ -736,6 +726,12 @@ class DeveloperCommands(commands.Cog):
 
 
 def main():
+    bot = CmpcDidThis(
+        case_insensitive=True,
+        command_prefix=command_prefix,
+        intents=INTENTS,
+        help_command=BotHelpCommand(),
+    )
     log.info("Connecting to discord...")
     # remove fancy ass shell colour that looks dumb in dark theme
     bot_log_formatter = logging.Formatter(logging.BASIC_FORMAT)
