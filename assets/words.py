@@ -1,4 +1,4 @@
-common_words = [
+common_words = (
     "the",
     "be",
     "and",
@@ -4999,4 +4999,4 @@ common_words = [
     "middle-class",
     "apology",
     "till",
-]
+)

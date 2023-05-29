@@ -606,6 +606,7 @@ async def random_capybara(ctx: Context):
         embed.set_image(url=f"attachment://{filename}")
     await ctx.send(embed=embed, file=file)
 
+
 @bot.hybrid_command(name="cat")
 async def random_cat(ctx: Context):
     """gives you a random cat"""
@@ -617,7 +618,8 @@ async def random_cat(ctx: Context):
         file = discord.File(fp, filename=filename)
         embed.set_image(url=f"attachment://{filename}")
     await ctx.send(embed=embed, file=file)
-    
+
+
 @bot.hybrid_command(name="game")
 async def random_game(ctx: Context):
     """gives you a random game"""
