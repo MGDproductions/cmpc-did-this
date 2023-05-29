@@ -29,6 +29,7 @@ INTENTS = discord.Intents.default()
 INTENTS.members = True
 INTENTS.message_content = True
 
+ENABLE_BIRTHDAY = False
 ENABLE_CLOCK = True
 ENABLE_FISH = True
 ENABLE_PROFANITY = True
@@ -57,16 +58,19 @@ EMOJI_SKULL = discord.PartialEmoji.from_str("💀")
 MENTION_NONE = discord.AllowedMentions.none()
 
 TZ_AMSTERDAM = ZoneInfo("Europe/Amsterdam")
-DAY_WEDNESDAY = 3
-DAY_THURSDAY = 4
+ISO_WEEKDAY_WEDNESDAY = 3
+ISO_WEEKDAY_THURSDAY = 4
 CLOCK_TIMES = [
     datetime.time(hour=h, minute=m, tzinfo=TZ_AMSTERDAM)
     for m in range(0, 60, 10)
     for h in range(24)
 ]
-FGW_START_TIME = datetime.time(hour=0, tzinfo=TZ_AMSTERDAM)
-FGW_END_TIME = datetime.time(hour=0, tzinfo=TZ_AMSTERDAM)
-FGW_HIDE_TIME = datetime.time(hour=0, minute=5, tzinfo=TZ_AMSTERDAM)
+TIME_MIDNIGHT = datetime.time(hour=0, tzinfo=TZ_AMSTERDAM)
+TIME_FGW_START = TIME_MIDNIGHT
+TIME_FGW_END = TIME_MIDNIGHT
+TIME_BIRTHDAY_START = TIME_MIDNIGHT
+TIME_BIRTHDAY_END = TIME_MIDNIGHT
+TIME_FGW_HIDE = datetime.time(hour=0, minute=5, tzinfo=TZ_AMSTERDAM)
 # how many seconds in a minute
 COUNTDOWN_MINUTE = 60
 
@@ -240,24 +244,27 @@ class CmpcDidThis(commands.Bot):
         channel = self.get_channel(VOICE_CHANNEL_CLOCK)
         await channel.edit(name=ams_time)
 
-    def wednesday_channel(self, *, day: int) -> Optional[discord.TextChannel]:
+    @staticmethod
+    def is_today(day: int) -> bool:
         datetime_amsterdam = datetime.datetime.now(TZ_AMSTERDAM)
-        log.info("day-of-week check %d : %s", day, datetime_amsterdam)
-        if datetime_amsterdam.isoweekday() != day:
-            log.info("Not doing fgw routine")
-            return None
-        else:
-            log.info("Doing fgw routine")
-            return self.get_channel(TEXT_CHANNEL_FISH)
+        result = datetime_amsterdam.isoweekday() == day
+        log.info("day-of-week check %d : %s : %s", day, datetime_amsterdam, result)
+        return result
 
-    @tasks.loop(time=FGW_START_TIME)
+    def get_fish_channel(self) -> discord.TextChannel:
+        channel = self.get_channel(TEXT_CHANNEL_FISH)
+        if channel is None:
+            raise ValueError(f"Could not find channel {TEXT_CHANNEL_FISH}")
+        return channel
+
+    @tasks.loop(time=TIME_FGW_START)
     async def fgw_start(self):
         # only run on wednesday
-        channel = self.wednesday_channel(day=DAY_WEDNESDAY)
-        if channel is None:
+        if not self.is_today(ISO_WEEKDAY_WEDNESDAY):
             return
-
         log.info("fish gaming wednesday started")
+        channel = self.get_fish_channel()
+
         perms = channel.overwrites_for(channel.guild.default_role)
         perms.update(
             view_channel=True,
@@ -267,17 +274,16 @@ class CmpcDidThis(commands.Bot):
             channel.guild.default_role, overwrite=perms, reason="fgw_start"
         )
         await channel.send(
-            f"<@&{ROLE_FISH}>", file=discord.File("assets/fishgamingwednesday.mp4")
+            f"<@&{ROLE_FISH}>", file=discord.File("assets/fgw.mp4")
         )
 
-    @tasks.loop(time=FGW_END_TIME)
+    @tasks.loop(time=TIME_FGW_END)
     async def fgw_end(self):
         # only run on thursday (end of wednesday)
-        channel = self.wednesday_channel(day=DAY_THURSDAY)
-        if channel is None:
+        if not self.is_today(ISO_WEEKDAY_THURSDAY):
             return
-
         log.info("fish gaming wednesday ending")
+        channel = self.get_fish_channel()
 
         # set channel to read-only
         perms = channel.overwrites_for(channel.guild.default_role)
@@ -308,13 +314,12 @@ class CmpcDidThis(commands.Bot):
         embed.remove_field(0)
         await message.edit(embed=embed)
 
-    @tasks.loop(time=FGW_HIDE_TIME)
+    @tasks.loop(time=TIME_FGW_HIDE)
     async def fgw_hide(self):
-        channel = self.wednesday_channel(day=DAY_THURSDAY)
-        if channel is None:
+        if not self.is_today(ISO_WEEKDAY_THURSDAY):
             return
-
         log.info("fish gaming wednesday ended")
+        channel = self.get_fish_channel()
 
         # hide channel
         perms = channel.overwrites_for(channel.guild.default_role)
