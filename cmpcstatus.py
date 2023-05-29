@@ -31,7 +31,7 @@ INTENTS = discord.Intents.default()
 INTENTS.members = True
 INTENTS.message_content = True
 
-ENABLE_BIRTHDAY = False
+ENABLE_BIRTHDAY = True
 ENABLE_CLOCK = True
 ENABLE_FISH = True
 ENABLE_PROFANITY = True
@@ -50,7 +50,7 @@ ROLE_MODS = 725356663850270821
 TEXT_CHANNEL_BIRTHDAY = 982687737503182858
 TEXT_CHANNEL_FISH = 875297517351358474
 TEXT_CHANNEL_GENERAL = 714154159590473801
-TEXT_CHANNEL_READY = 736664393630220289
+TEXT_CHANNEL_BOT_COMMANDS = 736664393630220289
 VOICE_CHANNEL_CLOCK = 753467367966638100
 
 CHANNEL_PERMISSIONS_OPEN = {"view_channel": True, "send_messages": True}
@@ -66,6 +66,7 @@ EMOJI_SKULL = discord.PartialEmoji.from_str("💀")
 MENTION_NONE = discord.AllowedMentions.none()
 
 TZ_AMSTERDAM = ZoneInfo("Europe/Amsterdam")
+TZ_LONDON = ZoneInfo("Europe/London")
 ISO_WEEKDAY_WEDNESDAY = 3
 ISO_WEEKDAY_THURSDAY = 4
 CLOCK_TIMES = [
@@ -161,7 +162,7 @@ class CmpcDidThis(commands.Bot):
         log.info(f"Connected to discord as: %s", self.user)
 
         if ENABLE_READY_MESSAGE:
-            ready_channel = self.get_channel(TEXT_CHANNEL_READY)
+            ready_channel = self.get_channel(TEXT_CHANNEL_BOT_COMMANDS)
             await ready_channel.send(f"Connected to discord from: `{platform.node()}`")
 
     async def close(self):
