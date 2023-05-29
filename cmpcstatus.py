@@ -25,7 +25,6 @@ from PIL import Image, ImageDraw, ImageFont
 from assets.words import common_words
 
 
-# todo update deps
 # todo AGPL?
 
 
