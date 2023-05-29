@@ -334,6 +334,7 @@ class BotHelpCommand(commands.DefaultHelpCommand):
             ("random game", "gives you a random game"),
             ("random gif", "gives you a random gif"),
             ("random capybara", "gives you a random capybara"),
+            ("random cat", "gives you a random cat"),
             (
                 "random gif {search term}",
                 "gives you a random gif that matches your search term example: random gif cat",
@@ -605,7 +606,18 @@ async def random_capybara(ctx: Context):
         embed.set_image(url=f"attachment://{filename}")
     await ctx.send(embed=embed, file=file)
 
-
+@bot.hybrid_command(name="cat")
+async def random_cat(ctx: Context):
+    """gives you a random cat"""
+    async with ctx.typing():
+        async with ctx.bot.session.get("https://cataas.com/cat") as response:
+            fp = BytesIO(await response.content.read())
+        embed = Embed(title="cat for u!", color=COLOUR_RED)
+        filename = "cat.png"
+        file = discord.File(fp, filename=filename)
+        embed.set_image(url=f"attachment://{filename}")
+    await ctx.send(embed=embed, file=file)
+    
 @bot.hybrid_command(name="game")
 async def random_game(ctx: Context):
     """gives you a random game"""
