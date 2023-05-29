@@ -726,16 +726,17 @@ class BasicCommands(BotCog):
     async def say(self, ctx: Context, *, text: str):
         return await ctx.send(text)
 
-    @commands.command(aliases=("github", "git"))
+    @commands.command(aliases=("code", "git", "github"))
     async def source(self, ctx: Context, upload: bool = False):
-        await ctx.send("https://github.com/MDproductions-dev/cmpc-did-this")
+        message = await ctx.send("https://github.com/MDproductions-dev/cmpc-did-this")
 
         if upload:
-            with TemporaryFile() as file:
-                subprocess.run(["git", "archive", "--format=zip", "HEAD"], stdout=file)
-                file.seek(0)
-                discord_file = discord.File(file, filename="source.zip")
-                await ctx.send(file=discord_file)
+            async with ctx.typing():
+                with TemporaryFile() as file:
+                    subprocess.run(["git", "archive", "--format=zip", "HEAD"], stdout=file)
+                    file.seek(0)
+                    discord_file = discord.File(file, filename="source.zip")
+                    await message.reply(file=discord_file)
 
     # todo? command to invoke another command and delete the invoking message
     # @commands.command(hidden=True)
