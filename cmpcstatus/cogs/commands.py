@@ -1,5 +1,7 @@
+import logging
 import random
 import subprocess
+import sys
 import urllib.parse
 from io import BytesIO
 from tempfile import TemporaryFile
@@ -11,8 +13,12 @@ from discord.ext import commands
 from discord.ext.commands import Context
 
 from assets.words import common_words
-from cmpcstatus import BotCog, log
+from cmpcstatus import BotCog
 from cmpcstatus.constants import COLOUR_RED, ROLE_DEVELOPER
+
+log = logging.getLogger(__name__)
+log.addHandler(logging.StreamHandler(sys.stdout))
+log.setLevel(logging.INFO)
 
 
 class BasicCommands(BotCog):

@@ -6,7 +6,6 @@ import sys
 from cmpcstatus.bot import BotCog, BotHelpCommand, CmpcDidThis, command_prefix
 from cmpcstatus.constants import INTENTS
 
-
 log = logging.getLogger(__name__)
 log.addHandler(logging.StreamHandler(sys.stdout))
 log.setLevel(logging.INFO)

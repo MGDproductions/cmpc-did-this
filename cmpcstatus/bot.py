@@ -1,16 +1,21 @@
 import datetime
+import logging
 import platform
+import sys
 import tomllib
 from io import BytesIO
 from typing import Optional
 
 import aiohttp
 import discord
-from PIL import Image, ImageDraw, ImageFont
 from discord import Embed, Member, Message, utils
 from discord.ext import commands, tasks
 from discord.ext.commands import Context
+from PIL import Image, ImageDraw, ImageFont
 
+from cmpcstatus.cogs.commands import BasicCommands, DeveloperCommands
+from cmpcstatus.cogs.events import Birthday, FishGamingWednesday
+from cmpcstatus.cogs.profanity import ProfanityLeaderboard
 from cmpcstatus.constants import (
     CLOCK_TIMES,
     COLOUR_GREEN,
@@ -32,10 +37,10 @@ from cmpcstatus.constants import (
     TZ_AMSTERDAM,
     VOICE_CHANNEL_CLOCK,
 )
-from cmpcstatus import log
-from cmpcstatus.cogs.commands import BasicCommands, DeveloperCommands
-from cmpcstatus.cogs.profanity import ProfanityLeaderboard
-from cmpcstatus.cogs.events import Birthday, FishGamingWednesday
+
+log = logging.getLogger(__name__)
+log.addHandler(logging.StreamHandler(sys.stdout))
+log.setLevel(logging.INFO)
 
 
 class BotConfig:

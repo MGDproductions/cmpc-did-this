@@ -1,14 +1,13 @@
 import asyncio
 import datetime
+import logging
+import sys
 
 import discord
 from discord import Embed
 from discord.ext import tasks
 
-from cmpcstatus import (
-    BotCog,
-    log,
-)
+from cmpcstatus import BotCog
 from cmpcstatus.constants import (
     CHANNEL_PERMISSIONS_HIDDEN,
     CHANNEL_PERMISSIONS_LOCKED,
@@ -29,6 +28,10 @@ from cmpcstatus.constants import (
     TIME_FGW_START,
     TZ_AMSTERDAM,
 )
+
+log = logging.getLogger(__name__)
+log.addHandler(logging.StreamHandler(sys.stdout))
+log.setLevel(logging.INFO)
 
 
 class FishGamingWednesday(BotCog):

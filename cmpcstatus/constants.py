@@ -3,7 +3,6 @@ from zoneinfo import ZoneInfo
 
 import discord
 
-
 # bot API intents
 INTENTS = discord.Intents.default()
 INTENTS.members = True
