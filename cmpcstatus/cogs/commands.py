@@ -13,7 +13,7 @@ from discord.ext import commands
 from discord.ext.commands import Context
 
 from assets.words import common_words
-from cmpcstatus import BotCog
+from cmpcstatus.bot import BotCog
 from cmpcstatus.constants import COLOUR_RED, ROLE_DEVELOPER
 
 log = logging.getLogger(__name__)

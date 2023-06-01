@@ -13,9 +13,7 @@ from discord.ext import commands, tasks
 from discord.ext.commands import Context
 from PIL import Image, ImageDraw, ImageFont
 
-from cmpcstatus.cogs.commands import BasicCommands, DeveloperCommands
-from cmpcstatus.cogs.events import Birthday, FishGamingWednesday
-from cmpcstatus.cogs.profanity import ProfanityLeaderboard
+
 from cmpcstatus.constants import (
     CLOCK_TIMES,
     COLOUR_GREEN,
@@ -23,10 +21,7 @@ from cmpcstatus.constants import (
     COMMAND_PREFIX,
     EMOJI_SAT_CAT,
     EMOJI_SKULL,
-    ENABLE_BIRTHDAY,
     ENABLE_CLOCK,
-    ENABLE_FISH,
-    ENABLE_PROFANITY,
     ENABLE_READY_MESSAGE,
     ENABLE_WELCOME,
     GUILD_EGGYBOI,
@@ -70,16 +65,6 @@ class CmpcDidThis(commands.Bot):
     async def setup_hook(self):
         # set up http session
         self.session = aiohttp.ClientSession()
-
-        # add default cogs
-        await self.add_cog(BasicCommands(self))
-        await self.add_cog(DeveloperCommands(self))
-        if ENABLE_BIRTHDAY:
-            await self.add_cog(Birthday(self))
-        if ENABLE_FISH:
-            await self.add_cog(FishGamingWednesday(self))
-        if ENABLE_PROFANITY:
-            await self.add_cog(ProfanityLeaderboard(self))
 
         print("done")  # this line is needed to work with ptero
 

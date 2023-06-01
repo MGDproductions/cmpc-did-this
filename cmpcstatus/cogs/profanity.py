@@ -7,7 +7,7 @@ from discord import Member, Message, utils
 from discord.ext import commands
 from discord.ext.commands import Context
 
-from cmpcstatus import BotCog
+from cmpcstatus.bot import BotCog
 from cmpcstatus.constants import (
     MENTION_NONE,
     PATH_DATABASE,
