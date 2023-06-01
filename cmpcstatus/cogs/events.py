@@ -1,7 +1,6 @@
 import asyncio
 import datetime
 import logging
-import sys
 
 import discord
 from discord import Embed
@@ -30,8 +29,6 @@ from cmpcstatus.constants import (
 )
 
 log = logging.getLogger(__name__)
-log.addHandler(logging.StreamHandler(sys.stdout))
-log.setLevel(logging.INFO)
 
 
 class FishGamingWednesday(BotCog):

@@ -1,7 +1,6 @@
 import datetime
 import logging
 import platform
-import sys
 import tomllib
 from io import BytesIO
 from typing import Optional
@@ -16,7 +15,6 @@ from PIL import Image, ImageDraw, ImageFont
 from cmpcstatus.cogs.commands import BasicCommands, DeveloperCommands
 from cmpcstatus.cogs.events import Birthday, FishGamingWednesday
 from cmpcstatus.cogs.profanity import ProfanityLeaderboard
-
 from cmpcstatus.constants import (
     CLOCK_TIMES,
     COLOUR_GREEN,
@@ -24,8 +22,11 @@ from cmpcstatus.constants import (
     COMMAND_PREFIX,
     EMOJI_SAT_CAT,
     EMOJI_SKULL,
-    ENABLE_BIRTHDAY, ENABLE_CLOCK,
-    ENABLE_FISH, ENABLE_PROFANITY, ENABLE_READY_MESSAGE,
+    ENABLE_BIRTHDAY,
+    ENABLE_CLOCK,
+    ENABLE_FISH,
+    ENABLE_PROFANITY,
+    ENABLE_READY_MESSAGE,
     ENABLE_WELCOME,
     GUILD_EGGYBOI,
     PATH_CONFIG,
@@ -37,8 +38,6 @@ from cmpcstatus.constants import (
 )
 
 log = logging.getLogger(__name__)
-log.addHandler(logging.StreamHandler(sys.stdout))
-log.setLevel(logging.INFO)
 
 
 class BotConfig:
@@ -64,7 +63,6 @@ class Bot(commands.Bot):
         self.session: Optional[aiohttp.ClientSession] = None
         super().__init__(*args, **kwargs)
 
-    # SETUP
     async def setup_hook(self):
         # set up http session
         self.session = aiohttp.ClientSession()
@@ -80,6 +78,11 @@ class Bot(commands.Bot):
             await self.add_cog(ProfanityLeaderboard(self))
 
         print("done")  # this line is needed to work with ptero
+
+    async def send_ready_message(self, message: str):
+        if ENABLE_READY_MESSAGE:
+            ready_channel = self.get_channel(TEXT_CHANNEL_BOT_COMMANDS)
+            await ready_channel.send(message)
 
     async def on_ready(self):
         # start task loops
@@ -98,19 +101,19 @@ class Bot(commands.Bot):
         )
         log.info(f"Connected to discord as: %s", self.user)
 
-        if ENABLE_READY_MESSAGE:
-            ready_channel = self.get_channel(TEXT_CHANNEL_BOT_COMMANDS)
-            await ready_channel.send(f"Connected to discord from: `{platform.node()}`")
+        await self.send_ready_message(f"Connected from `{platform.node()}`")
 
     async def close(self):
         log.info("Closing bot instance")
-        await super().close()
+        await self.send_ready_message(f"Disconnecting from `{platform.node()}`")
+
         await self.session.close()
         if self.clock.is_running():
             self.clock.stop()
+        await super().close()
+
         log.info("Closed gracefully")
 
-    # EVENTS
     async def on_command_error(
         self, ctx: Context, exception: commands.errors.CommandError
     ):
@@ -177,7 +180,6 @@ class Bot(commands.Bot):
             if k == t:
                 await message.channel.send(v)
 
-    # TASKS
     @tasks.loop(time=CLOCK_TIMES)
     async def clock(self):
         datetime_amsterdam = datetime.datetime.now(TZ_AMSTERDAM)
