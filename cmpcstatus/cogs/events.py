@@ -7,7 +7,7 @@ import discord
 from discord import Embed
 from discord.ext import tasks
 
-from cmpcstatus.bot import BotCog
+from cmpcstatus.cogs._base import BotCog
 from cmpcstatus.constants import (
     CHANNEL_PERMISSIONS_HIDDEN,
     CHANNEL_PERMISSIONS_LOCKED,

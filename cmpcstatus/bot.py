@@ -13,6 +13,9 @@ from discord.ext import commands, tasks
 from discord.ext.commands import Context
 from PIL import Image, ImageDraw, ImageFont
 
+from cmpcstatus.cogs.commands import BasicCommands, DeveloperCommands
+from cmpcstatus.cogs.events import Birthday, FishGamingWednesday
+from cmpcstatus.cogs.profanity import ProfanityLeaderboard
 
 from cmpcstatus.constants import (
     CLOCK_TIMES,
@@ -21,8 +24,8 @@ from cmpcstatus.constants import (
     COMMAND_PREFIX,
     EMOJI_SAT_CAT,
     EMOJI_SKULL,
-    ENABLE_CLOCK,
-    ENABLE_READY_MESSAGE,
+    ENABLE_BIRTHDAY, ENABLE_CLOCK,
+    ENABLE_FISH, ENABLE_PROFANITY, ENABLE_READY_MESSAGE,
     ENABLE_WELCOME,
     GUILD_EGGYBOI,
     PATH_CONFIG,
@@ -55,7 +58,7 @@ def load_config(fp: str = PATH_CONFIG) -> BotConfig:
     return config
 
 
-class CmpcDidThis(commands.Bot):
+class Bot(commands.Bot):
     def __init__(self, *args, **kwargs):
         self.config = load_config()
         self.session: Optional[aiohttp.ClientSession] = None
@@ -65,6 +68,16 @@ class CmpcDidThis(commands.Bot):
     async def setup_hook(self):
         # set up http session
         self.session = aiohttp.ClientSession()
+
+        # add default cogs
+        await self.add_cog(BasicCommands(self))
+        await self.add_cog(DeveloperCommands(self))
+        if ENABLE_BIRTHDAY:
+            await self.add_cog(Birthday(self))
+        if ENABLE_FISH:
+            await self.add_cog(FishGamingWednesday(self))
+        if ENABLE_PROFANITY:
+            await self.add_cog(ProfanityLeaderboard(self))
 
         print("done")  # this line is needed to work with ptero
 
@@ -174,13 +187,7 @@ class CmpcDidThis(commands.Bot):
         await channel.edit(name=ams_time)
 
 
-class BotCog(commands.Cog):
-    def __init__(self, bot: CmpcDidThis, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.bot = bot
-
-
-def command_prefix(bot_: CmpcDidThis, message: Message) -> list[str]:
+def command_prefix(bot: Bot, message: Message) -> list[str]:
     prefix_lengths = {p: len(p) for p in COMMAND_PREFIX}
     longest = max(prefix_lengths.values())
     message_start = message.content[:longest]
@@ -188,7 +195,7 @@ def command_prefix(bot_: CmpcDidThis, message: Message) -> list[str]:
     for prefix, length in prefix_lengths.items():
         if possible.startswith(prefix):
             return [message_start[:length]]
-    return commands.when_mentioned(bot_, message)
+    return commands.when_mentioned(bot, message)
 
 
 class BotHelpCommand(commands.DefaultHelpCommand):
