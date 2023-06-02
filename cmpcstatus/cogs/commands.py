@@ -184,6 +184,7 @@ class DeveloperCommands(BotCog):
     async def test_fish(
         self, ctx: Context, event: Literal["start", "lock", "end"], name: str
     ):
+        await ctx.send("Getting cog")
         cog = self.bot.get_cog(name)
         if cog is None:
             raise ValueError(f"No cog with name: {name}")
@@ -191,6 +192,7 @@ class DeveloperCommands(BotCog):
             event_cog: FishGamingWednesday = cog
         else:
             raise TypeError(f"Not an event cog: {name}")
+        await ctx.send("Got cog")
 
         events = {
             "start": event_cog.event_start,
@@ -199,6 +201,7 @@ class DeveloperCommands(BotCog):
         }
         requested_event = events[event]
         await requested_event()
+        await ctx.send("Called event")
 
     @commands.command(hidden=True)
     async def git_last(self, ctx: Context):

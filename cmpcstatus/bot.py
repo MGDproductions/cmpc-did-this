@@ -13,7 +13,7 @@ from discord.ext.commands import Context
 from PIL import Image, ImageDraw, ImageFont
 
 from cmpcstatus.cogs.commands import BasicCommands, DeveloperCommands
-from cmpcstatus.cogs.events import Birthday, FishGamingWednesday
+from cmpcstatus.cogs.events import FishGamingWednesday, MarcelGamingBirthday
 from cmpcstatus.cogs.profanity import ProfanityLeaderboard
 from cmpcstatus.constants import (
     CLOCK_TIMES,
@@ -73,7 +73,7 @@ class Bot(commands.Bot):
         await self.add_cog(BasicCommands(self))
         await self.add_cog(DeveloperCommands(self))
         if ENABLE_BIRTHDAY:
-            await self.add_cog(Birthday(self))
+            await self.add_cog(MarcelGamingBirthday(self))
         if ENABLE_FISH:
             await self.add_cog(FishGamingWednesday(self))
         if ENABLE_PROFANITY:

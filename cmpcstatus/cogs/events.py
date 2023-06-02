@@ -1,7 +1,7 @@
 import asyncio
 import datetime
 import logging
-from typing import Coroutine, Mapping
+from typing import Mapping
 
 import discord
 from discord import Embed
@@ -20,9 +20,12 @@ from cmpcstatus.constants import (
     ISO_WEEKDAY_THURSDAY,
     ISO_WEEKDAY_WEDNESDAY,
     ROLE_FISH,
+    TESTING,
     TEXT_CHANNEL_BIRTHDAY,
     TEXT_CHANNEL_FISH,
-    TIME_BIRTHDAY_START,
+    TIME_BDAY_END,
+    TIME_BDAY_LOCK,
+    TIME_BDAY_START,
     TIME_FGW_END,
     TIME_FGW_LOCK,
     TIME_FGW_START,
@@ -31,8 +34,10 @@ from cmpcstatus.constants import (
 from cmpcstatus.util import get_asset
 
 log = logging.getLogger(__name__)
-# todo change back
-COUNTDOWN_MINUTE = 2
+
+
+if TESTING:
+    COUNTDOWN_MINUTE = 2
 
 
 def loop(func: tasks.LF, time: datetime.time) -> tasks.Loop:
@@ -51,6 +56,8 @@ def loop(func: tasks.LF, time: datetime.time) -> tasks.Loop:
 class EventCog(BotCog):
     # todo allow changing channel name and description
     name: str
+    mention: str
+    channel: int
 
     start_filename: str
     start_message: str
@@ -99,14 +106,14 @@ class EventCog(BotCog):
         raise NotImplementedError
 
     def get_channel(self) -> discord.TextChannel:
-        channel = self.bot.get_channel(TEXT_CHANNEL_FISH)
+        channel = self.bot.get_channel(self.channel)
         if channel is None:
             raise ValueError(f"Could not find channel {TEXT_CHANNEL_FISH}")
         return channel
 
     async def event_start(self):
         # only run on wednesday
-        if not self.is_start_date():
+        if not TESTING and not self.is_start_date():
             return
         log.info(f"%s started", self.name)
         channel = self.get_channel()
@@ -121,7 +128,7 @@ class EventCog(BotCog):
 
     async def event_lock(self):
         # only run on thursday (end of wednesday)
-        if not self.is_end_date():
+        if not TESTING and not self.is_end_date():
             return
         log.info(f"%s ending", self.name)
         channel = self.get_channel()
@@ -152,7 +159,7 @@ class EventCog(BotCog):
         await message.edit(embed=embed)
 
     async def event_end(self):
-        if not self.is_end_date():
+        if not TESTING and not self.is_end_date():
             return
         log.info("%s ended", self.name)
         channel = self.get_channel()
@@ -165,12 +172,14 @@ class EventCog(BotCog):
 
 class FishGamingWednesday(EventCog):
     name = "fish gaming wednesday"
+    if TESTING:
+        mention = "<@329885271787307008>"
+    else:
+        mention = f"<@&{ROLE_FISH}>"
+    channel = TEXT_CHANNEL_FISH
 
     start_filename = "fgw.mp4"
-    # todo change back
-    #      add TESTING constant to handle that?
-    # start_message = f"<@&{ROLE_FISH}>"
-    start_message = f"<@329885271787307008>"
+    start_message = f"{mention}"
     end_filename = "fgwends.png"
     end_message = "Fish gaming wednesday has ended."
 
@@ -186,21 +195,20 @@ class FishGamingWednesday(EventCog):
         return result
 
     def is_start_date(self) -> bool:
-        # todo
-        return True
-        # return self.is_today(ISO_WEEKDAY_WEDNESDAY)
+        return self.is_today(ISO_WEEKDAY_WEDNESDAY)
 
     def is_end_date(self) -> bool:
-        return True
-        # return self.is_today(ISO_WEEKDAY_THURSDAY)
+        return self.is_today(ISO_WEEKDAY_THURSDAY)
 
 
-class Birthday(EventCog):
+class MarcelGamingBirthday(EventCog):
     name = "Marcel's birthday"
+    if TESTING:
+        mention = f"<@329885271787307008>"
+    else:
+        mention = "@everyone"
+    channel = TEXT_CHANNEL_BIRTHDAY
 
-    # todo change back
-    # mention = "@everyone"
-    mention = f"<@329885271787307008>"
     start_filename = "birthday.mp4"
     start_message = (
         f"{EMOJI_BIBI_PARTY}{EMOJI_BIBI_PARTY}{EMOJI_BIBI_PARTY} "
@@ -212,10 +220,9 @@ class Birthday(EventCog):
     end_filename = "fgwends.png"
     end_message = "Fish gaming wednesday has ended."
 
-    start_time = TIME_BIRTHDAY_START
-    # todo these constants
-    lock_time = TIME_FGW_LOCK
-    end_time = TIME_FGW_END
+    start_time = TIME_BDAY_START
+    lock_time = TIME_BDAY_LOCK
+    end_time = TIME_BDAY_END
 
     @staticmethod
     def is_date(month: int, day: int) -> bool:
