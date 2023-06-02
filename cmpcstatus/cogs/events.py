@@ -180,7 +180,7 @@ class FishGamingWednesday(EventCog):
     channel_name = "fish-gaming-wednesday"
     channel_topic = (
         "conversation doesn't have to be about gaming,"
-        " chat that's only accessible on wednesday my dudes (based on GMT)"
+        " chat that's only accessible on wednesday my dudes (GMT + 1)"
     )
 
     if TESTING:
@@ -213,9 +213,11 @@ class FishGamingWednesday(EventCog):
 class MarcelGamingBirthday(EventCog):
     name = "Marcel's birthday"
     channel_id = TEXT_CHANNEL_BIRTHDAY
-    # todo
-    channel_name = ""
-    channel_topic = ""
+    channel_name = "marcel-gaming-birthday"
+    channel_topic = (
+        "conversation doesn't have to be about gaming,"
+        " chat that's only accessible on birthday my dudes (GMT + 1)"
+    )
 
     if TESTING:
         mention = f"<@329885271787307008>"
