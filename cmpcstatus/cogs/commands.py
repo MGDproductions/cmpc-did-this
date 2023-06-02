@@ -3,6 +3,7 @@ import random
 import subprocess
 import sys
 import urllib.parse
+from http import HTTPStatus
 from io import BytesIO
 from tempfile import TemporaryFile
 from typing import Literal, Optional
@@ -118,14 +119,24 @@ class BasicCommands(BotCog):
         async with self.bot.session.head(url) as r:
             r.raise_for_status()
 
+    @staticmethod
+    def random_http_status_code() -> int:
+        status = random.choice(list(HTTPStatus))
+        code = int(status)
+        return code
+
     @commands.hybrid_command(aliases=("http", "httpcat"))
-    async def http_cat(self, ctx: Context, status_code: int):
+    async def http_cat(self, ctx: Context, status_code: Optional[int]):
+        if status_code is None:
+            status_code = self.random_http_status_code()
         url = f"https://http.cat/{status_code}.jpg"
         await self.ping_url(url)
         await ctx.send(url)
 
     @commands.hybrid_command(aliases=("httpdog",))
-    async def http_dog(self, ctx: Context, status_code: int):
+    async def http_dog(self, ctx: Context, status_code: Optional[int]):
+        if status_code is None:
+            status_code = self.random_http_status_code()
         url = f"https://httpstatusdogs.com/img/{status_code}.jpg"
         await self.ping_url(url)
         await ctx.send(url)
