@@ -28,6 +28,7 @@ from cmpcstatus.constants import (
     ENABLE_PROFANITY,
     ENABLE_READY_MESSAGE,
     ENABLE_WELCOME,
+    FONT_SIZE_WELCOME,
     GUILD_EGGYBOI,
     PATH_CONFIG,
     ROLE_MEMBER,
@@ -36,6 +37,7 @@ from cmpcstatus.constants import (
     TZ_AMSTERDAM,
     VOICE_CHANNEL_CLOCK,
 )
+from cmpcstatus.util import get_asset
 
 log = logging.getLogger(__name__)
 
@@ -134,9 +136,14 @@ class Bot(commands.Bot):
             # create image
             newline = "\n" if len(name) > 10 else " "
             text = f"Welcome!{newline}{name}"
-            image = Image.open("assets/bg.png", formats=["PNG"])
+
+            with get_asset("bg.png") as path:
+                image = Image.open(path, formats=["PNG"])
+            with get_asset("Berlin Sans FB Demi Bold.ttf") as path:
+                font = ImageFont.truetype(str(path), FONT_SIZE_WELCOME)
+
             draw = ImageDraw.Draw(image)
-            draw.font = ImageFont.truetype("assets/Berlin Sans FB Demi Bold.ttf", 40)
+            draw.font = font
             _, _, width, height = draw.textbbox((0, 0), text)
             position = (
                 (image.width - width) / 2,

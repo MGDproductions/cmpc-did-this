@@ -11,7 +11,7 @@ from discord import Embed, Member
 from discord.ext import commands
 from discord.ext.commands import Context
 
-from assets.words import common_words
+from cmpcstatus.assets.words import common_words
 from cmpcstatus.cogs._base import BotCog
 from cmpcstatus.constants import COLOUR_RED, ROLE_DEVELOPER
 

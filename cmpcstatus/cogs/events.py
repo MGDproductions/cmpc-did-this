@@ -27,6 +27,7 @@ from cmpcstatus.constants import (
     TIME_FGW_START,
     TZ_AMSTERDAM,
 )
+from cmpcstatus.util import get_asset
 
 log = logging.getLogger(__name__)
 
@@ -74,7 +75,8 @@ class FishGamingWednesday(BotCog):
         await channel.set_permissions(
             channel.guild.default_role, overwrite=perms, reason="fgw_start"
         )
-        await channel.send(f"<@&{ROLE_FISH}>", file=discord.File("assets/fgw.mp4"))
+        with get_asset("fgw.mp4") as path:
+            await channel.send(f"<@&{ROLE_FISH}>", file=discord.File(path))
 
     @tasks.loop(time=TIME_FGW_LOCK)
     async def fgw_lock(self):
@@ -95,8 +97,9 @@ class FishGamingWednesday(BotCog):
         embed = Embed(title="Fish gaming wednesday has ended.", color=COLOUR_BLUE)
         filename = "fgwends.png"
         embed.set_image(url=f"attachment://{filename}")
-        file = discord.File(f"assets/{filename}", filename=f"{filename}")
-        message = await channel.send(embed=embed, file=file)
+        with get_asset(filename) as path:
+            file = discord.File(path, filename=filename)
+            message = await channel.send(embed=embed, file=file)
 
         # edit message until countdown ends
         embed.add_field(name="", value="")
@@ -153,10 +156,13 @@ class Birthday(BotCog):
             channel.guild.default_role, overwrite=perms, reason="birthday_start"
         )
 
-        file = discord.File("assets/birthday.mp4")
-        await channel.send(
-            f"{EMOJI_BIBI_PARTY}{EMOJI_BIBI_PARTY}{EMOJI_BIBI_PARTY} @everyone It's Marcel's birthday today!"
-            " As a birthday gift he wants all the cat pictures in the world."
-            f" Drop them in this chat before he wakes up!{EMOJI_BIBI_PARTY}{EMOJI_BIBI_PARTY}{EMOJI_BIBI_PARTY}",
-            file=file,
-        )
+        with get_asset("birthday.mp4") as path:
+            file = discord.File(path)
+            await channel.send(
+                f"{EMOJI_BIBI_PARTY}{EMOJI_BIBI_PARTY}{EMOJI_BIBI_PARTY} "
+                "@everyone It's Marcel's birthday today!"
+                " As a birthday gift he wants all the cat pictures in the world."
+                " Drop them in this chat before he wakes up!"
+                f"{EMOJI_BIBI_PARTY}{EMOJI_BIBI_PARTY}{EMOJI_BIBI_PARTY}",
+                file=file,
+            )

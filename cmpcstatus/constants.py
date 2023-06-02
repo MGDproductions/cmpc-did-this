@@ -84,3 +84,4 @@ COMMAND_PREFIX = [
     "c.",
     "$",
 ]
+FONT_SIZE_WELCOME = 40
