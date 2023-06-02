@@ -16,6 +16,8 @@ ENABLE_PROFANITY = True
 ENABLE_READY_MESSAGE = True
 ENABLE_WELCOME = True
 
+FONT_SIZE_WELCOME = 40
+
 # file locations
 PATH_CONFIG = "config.toml"
 PATH_DATABASE = "db.sqlite3"
@@ -84,4 +86,3 @@ COMMAND_PREFIX = [
     "c.",
     "$",
 ]
-FONT_SIZE_WELCOME = 40
