@@ -34,21 +34,19 @@ log = logging.getLogger(__name__)
 # todo change back
 COUNTDOWN_MINUTE = 2
 
-class FishGamingWednesday(BotCog):
+
+class EventCog(BotCog):
     # todo allow changing channel name and description
-    name = "fish gaming wednesday"
+    name: str
 
-    start_filename = "fgw.mp4"
-    # todo change back
-    #      add TESTING constant to handle that?
-    # start_message = f"<@&{ROLE_FISH}>"
-    start_message = f"<@329885271787307008>"
-    end_filename = "fgwends.png"
-    end_message = "Fish gaming wednesday has ended."
+    start_filename: str
+    start_message: str
+    end_filename: str
+    end_message: str
 
-    start_time = TIME_FGW_START
-    lock_time = TIME_FGW_LOCK
-    end_time = TIME_FGW_END
+    start_time: datetime.time
+    lock_time: datetime.time
+    end_time: datetime.time
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -76,20 +74,11 @@ class FishGamingWednesday(BotCog):
             channel.guild.default_role, overwrite=perms, reason=reason
         )
 
-    @staticmethod
-    def is_today(day: int) -> bool:
-        datetime_amsterdam = datetime.datetime.now(TZ_AMSTERDAM)
-        result = datetime_amsterdam.isoweekday() == day
-        log.info("day-of-week check %d : %s : %s", day, datetime_amsterdam, result)
-        return result
-
     def is_start_date(self) -> bool:
-        return True
-        # return self.is_today(ISO_WEEKDAY_WEDNESDAY)
+        raise NotImplementedError
 
     def is_end_date(self) -> bool:
-        return True
-        # return self.is_today(ISO_WEEKDAY_THURSDAY)
+        raise NotImplementedError
 
     def get_channel(self) -> discord.TextChannel:
         channel = self.bot.get_channel(TEXT_CHANNEL_FISH)
@@ -159,12 +148,59 @@ class FishGamingWednesday(BotCog):
         )
 
 
-class Birthday(BotCog):
-    async def cog_load(self):
-        self.birthday_start.start()
+class FishGamingWednesday(EventCog):
+    name = "fish gaming wednesday"
 
-    async def cog_unload(self):
-        self.birthday_start.stop()
+    start_filename = "fgw.mp4"
+    # todo change back
+    #      add TESTING constant to handle that?
+    # start_message = f"<@&{ROLE_FISH}>"
+    start_message = f"<@329885271787307008>"
+    end_filename = "fgwends.png"
+    end_message = "Fish gaming wednesday has ended."
+
+    start_time = TIME_FGW_START
+    lock_time = TIME_FGW_LOCK
+    end_time = TIME_FGW_END
+
+    @staticmethod
+    def is_today(day: int) -> bool:
+        datetime_amsterdam = datetime.datetime.now(TZ_AMSTERDAM)
+        result = datetime_amsterdam.isoweekday() == day
+        log.info("day-of-week check %d : %s : %s", day, datetime_amsterdam, result)
+        return result
+
+    def is_start_date(self) -> bool:
+        # todo
+        return True
+        # return self.is_today(ISO_WEEKDAY_WEDNESDAY)
+
+    def is_end_date(self) -> bool:
+        return True
+        # return self.is_today(ISO_WEEKDAY_THURSDAY)
+
+
+class Birthday(EventCog):
+    name = "Marcel's birthday"
+
+    # todo change back
+    # mention = "@everyone"
+    mention = f"<@329885271787307008>"
+    start_filename = "birthday.mp4"
+    start_message = (
+        f"{EMOJI_BIBI_PARTY}{EMOJI_BIBI_PARTY}{EMOJI_BIBI_PARTY} "
+        f"{mention} It's Marcel's birthday today!"
+        " As a birthday gift he wants all the cat pictures in the world."
+        " Drop them in this chat before he wakes up!"
+        f"{EMOJI_BIBI_PARTY}{EMOJI_BIBI_PARTY}{EMOJI_BIBI_PARTY}"
+    )
+    end_filename = "fgwends.png"
+    end_message = "Fish gaming wednesday has ended."
+
+    start_time = TIME_BIRTHDAY_START
+    # todo these constants
+    lock_time = TIME_FGW_LOCK
+    end_time = TIME_FGW_END
 
     @staticmethod
     def is_date(month: int, day: int) -> bool:
@@ -173,26 +209,8 @@ class Birthday(BotCog):
         log.info("date check %d-%d : %s : %s", month, day, datetime_amsterdam, result)
         return result
 
-    @tasks.loop(time=TIME_BIRTHDAY_START)
-    async def birthday_start(self):
-        if not self.is_date(DATE_BIRTHDAY_MONTH, DATE_BIRTHDAY_DAY):
-            return
-        log.info("Marcel's birthday started")
-        channel = self.bot.get_channel(TEXT_CHANNEL_BIRTHDAY)
+    def is_start_date(self) -> bool:
+        return self.is_date(DATE_BIRTHDAY_MONTH, DATE_BIRTHDAY_DAY)
 
-        perms = channel.overwrites_for(channel.guild.default_role)
-        perms.update(**CHANNEL_PERMISSIONS_OPEN)
-        await channel.set_permissions(
-            channel.guild.default_role, overwrite=perms, reason="birthday_start"
-        )
-
-        with get_asset("birthday.mp4") as path:
-            file = discord.File(path)
-            await channel.send(
-                f"{EMOJI_BIBI_PARTY}{EMOJI_BIBI_PARTY}{EMOJI_BIBI_PARTY} "
-                "@everyone It's Marcel's birthday today!"
-                " As a birthday gift he wants all the cat pictures in the world."
-                " Drop them in this chat before he wakes up!"
-                f"{EMOJI_BIBI_PARTY}{EMOJI_BIBI_PARTY}{EMOJI_BIBI_PARTY}",
-                file=file,
-            )
+    def is_end_date(self) -> bool:
+        return self.is_date(DATE_BIRTHDAY_MONTH, DATE_BIRTHDAY_DAY + 1)

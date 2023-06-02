@@ -181,7 +181,9 @@ class DeveloperCommands(BotCog):
         await events[event](member)
 
     @commands.command(hidden=True)
-    async def test_fish(self, ctx: Context, event: Literal["start", "lock", "end"], name: str):
+    async def test_fish(
+        self, ctx: Context, event: Literal["start", "lock", "end"], name: str
+    ):
         cog = self.bot.get_cog(name)
         if cog is None:
             raise ValueError(f"No cog with name: {name}")
@@ -197,7 +199,6 @@ class DeveloperCommands(BotCog):
         }
         requested_event = events[event]
         await requested_event()
-
 
     @commands.command(hidden=True)
     async def git_last(self, ctx: Context):
