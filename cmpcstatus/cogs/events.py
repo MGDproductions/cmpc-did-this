@@ -33,14 +33,15 @@ from cmpcstatus.util import get_asset
 log = logging.getLogger(__name__)
 
 
-# todo command to test these
-
-
 class FishGamingWednesday(BotCog):
+    # todo allow changing channel name and description
     name = "fish gaming wednesday"
 
     start_filename = "fgw.mp4"
-    start_message = f"<@&{ROLE_FISH}>"
+    # todo change back
+    #      add TESTING constant to handle that?
+    # start_message = f"<@&{ROLE_FISH}>"
+    start_message = f"<@jmcb>"
     end_filename = "fgwends.png"
     end_message = "Fish gaming wednesday has ended."
 
@@ -51,9 +52,9 @@ class FishGamingWednesday(BotCog):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.tasks = (
-            self.fgw_start,
-            self.fgw_lock,
-            self.fgw_end,
+            self.event_start,
+            self.event_lock,
+            self.event_end,
         )
 
     async def cog_load(self):
@@ -94,7 +95,7 @@ class FishGamingWednesday(BotCog):
         return channel
 
     @tasks.loop(time=start_time)
-    async def fgw_start(self):
+    async def event_start(self):
         # only run on wednesday
         if not self.is_start_date():
             return
@@ -110,7 +111,7 @@ class FishGamingWednesday(BotCog):
             await channel.send(self.start_message, file=discord.File(path))
 
     @tasks.loop(time=lock_time)
-    async def fgw_lock(self):
+    async def event_lock(self):
         # only run on thursday (end of wednesday)
         if not self.is_end_date():
             return
@@ -143,7 +144,7 @@ class FishGamingWednesday(BotCog):
         await message.edit(embed=embed)
 
     @tasks.loop(time=end_time)
-    async def fgw_end(self):
+    async def event_end(self):
         if not self.is_end_date():
             return
         log.info("%s ended", self.name)

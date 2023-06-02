@@ -13,6 +13,7 @@ from discord.ext.commands import Context
 
 from cmpcstatus.assets.words import common_words
 from cmpcstatus.cogs._base import BotCog
+from cmpcstatus.cogs.events import FishGamingWednesday
 from cmpcstatus.constants import COLOUR_RED, ROLE_DEVELOPER
 
 log = logging.getLogger(__name__)
@@ -178,6 +179,25 @@ class DeveloperCommands(BotCog):
         }
         member = member or ctx.author
         await events[event](member)
+
+    @commands.command(hidden=True)
+    async def test_fish(self, ctx: Context, event: Literal["start", "lock", "stop"], name: str):
+        cog = self.bot.get_cog(name)
+        if cog is None:
+            raise ValueError(f"No cog with name: {name}")
+        if isinstance(cog, FishGamingWednesday):
+            event_cog: FishGamingWednesday = cog
+        else:
+            raise TypeError(f"Not an event cog: {name}")
+
+        events = {
+            "start": event_cog.event_start,
+            "lock": event_cog.event_lock,
+            "end": event_cog.event_end,
+        }
+        requested_event = events[event]
+        await requested_event()
+
 
     @commands.command(hidden=True)
     async def git_last(self, ctx: Context):
