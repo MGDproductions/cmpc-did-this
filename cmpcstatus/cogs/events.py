@@ -1,7 +1,7 @@
 import asyncio
 import datetime
 import logging
-from typing import Mapping
+from typing import Coroutine, Mapping
 
 import discord
 from discord import Embed
@@ -35,6 +35,19 @@ log = logging.getLogger(__name__)
 COUNTDOWN_MINUTE = 2
 
 
+def loop(func: tasks.LF, time: datetime.time) -> tasks.Loop:
+    event = tasks.Loop(
+        func,
+        seconds=discord.utils.MISSING,
+        minutes=discord.utils.MISSING,
+        hours=discord.utils.MISSING,
+        time=time,
+        count=None,
+        reconnect=True,
+    )
+    return event
+
+
 class EventCog(BotCog):
     # todo allow changing channel name and description
     name: str
@@ -50,6 +63,11 @@ class EventCog(BotCog):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        self.event_start = loop(self.event_start, self.start_time)
+        self.event_lock = loop(self.event_lock, self.lock_time)
+        self.event_end = loop(self.event_end, self.end_time)
+
         self.tasks = (
             self.event_start,
             self.event_lock,
@@ -86,7 +104,6 @@ class EventCog(BotCog):
             raise ValueError(f"Could not find channel {TEXT_CHANNEL_FISH}")
         return channel
 
-    @tasks.loop(time=start_time)
     async def event_start(self):
         # only run on wednesday
         if not self.is_start_date():
@@ -102,7 +119,6 @@ class EventCog(BotCog):
         with get_asset(self.start_filename) as path:
             await channel.send(self.start_message, file=discord.File(path))
 
-    @tasks.loop(time=lock_time)
     async def event_lock(self):
         # only run on thursday (end of wednesday)
         if not self.is_end_date():
@@ -135,7 +151,6 @@ class EventCog(BotCog):
         embed.remove_field(0)
         await message.edit(embed=embed)
 
-    @tasks.loop(time=end_time)
     async def event_end(self):
         if not self.is_end_date():
             return
