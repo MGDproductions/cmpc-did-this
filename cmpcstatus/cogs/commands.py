@@ -13,7 +13,7 @@ from discord.ext.commands import Context
 
 from cmpcstatus.assets.words import common_words
 from cmpcstatus.cogs._base import BotCog
-from cmpcstatus.cogs.events import FishGamingWednesday
+from cmpcstatus.cogs.events import EventCog
 from cmpcstatus.constants import COLOUR_RED, ROLE_DEVELOPER
 
 log = logging.getLogger(__name__)
@@ -188,8 +188,8 @@ class DeveloperCommands(BotCog):
         cog = self.bot.get_cog(name)
         if cog is None:
             raise ValueError(f"No cog with name: {name}")
-        if isinstance(cog, FishGamingWednesday):
-            event_cog: FishGamingWednesday = cog
+        if isinstance(cog, EventCog):
+            event_cog: EventCog = cog
         else:
             raise TypeError(f"Not an event cog: {name}")
         await ctx.send("Got cog")
