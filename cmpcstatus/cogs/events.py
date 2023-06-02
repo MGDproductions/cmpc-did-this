@@ -171,7 +171,7 @@ class EventCog(BotCog):
 
 
 class FishGamingWednesday(EventCog):
-    name = "fish gaming wednesday"
+    name = "Fish gaming wednesday"
     if TESTING:
         mention = "<@329885271787307008>"
     else:
@@ -181,7 +181,7 @@ class FishGamingWednesday(EventCog):
     start_filename = "fgw.mp4"
     start_message = f"{mention}"
     end_filename = "fgwends.png"
-    end_message = "Fish gaming wednesday has ended."
+    end_message = f"{name} has ended."
 
     start_time = TIME_FGW_START
     lock_time = TIME_FGW_LOCK
@@ -217,8 +217,8 @@ class MarcelGamingBirthday(EventCog):
         " Drop them in this chat before he wakes up!"
         f"{EMOJI_BIBI_PARTY}{EMOJI_BIBI_PARTY}{EMOJI_BIBI_PARTY}"
     )
-    end_filename = "fgwends.png"
-    end_message = "Fish gaming wednesday has ended."
+    end_filename = "fgwends.png"  # todo
+    end_message = f"{name} has ended."
 
     start_time = TIME_BDAY_START
     lock_time = TIME_BDAY_LOCK
