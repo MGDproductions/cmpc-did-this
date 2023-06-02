@@ -31,7 +31,8 @@ from cmpcstatus.constants import (
 from cmpcstatus.util import get_asset
 
 log = logging.getLogger(__name__)
-
+# todo change back
+COUNTDOWN_MINUTE = 2
 
 class FishGamingWednesday(BotCog):
     # todo allow changing channel name and description
@@ -41,7 +42,7 @@ class FishGamingWednesday(BotCog):
     # todo change back
     #      add TESTING constant to handle that?
     # start_message = f"<@&{ROLE_FISH}>"
-    start_message = f"<@jmcb>"
+    start_message = f"<@329885271787307008>"
     end_filename = "fgwends.png"
     end_message = "Fish gaming wednesday has ended."
 
@@ -83,10 +84,12 @@ class FishGamingWednesday(BotCog):
         return result
 
     def is_start_date(self) -> bool:
-        return self.is_today(ISO_WEEKDAY_WEDNESDAY)
+        return True
+        # return self.is_today(ISO_WEEKDAY_WEDNESDAY)
 
     def is_end_date(self) -> bool:
-        return self.is_today(ISO_WEEKDAY_THURSDAY)
+        return True
+        # return self.is_today(ISO_WEEKDAY_THURSDAY)
 
     def get_channel(self) -> discord.TextChannel:
         channel = self.bot.get_channel(TEXT_CHANNEL_FISH)
