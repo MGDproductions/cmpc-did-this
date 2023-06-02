@@ -32,7 +32,20 @@ from cmpcstatus.util import get_asset
 log = logging.getLogger(__name__)
 
 
+# todo command to test these
+
 class FishGamingWednesday(BotCog):
+    name = "fish gaming wednesday"
+
+    start_filename = "fgw.mp4"
+    start_message = f"<@&{ROLE_FISH}>"
+    end_filename = "fgwends.png"
+    end_message = "Fish gaming wednesday has ended."
+
+    start_time = TIME_FGW_START
+    lock_time = TIME_FGW_LOCK
+    end_time = TIME_FGW_END
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.tasks = (
@@ -56,49 +69,56 @@ class FishGamingWednesday(BotCog):
         log.info("day-of-week check %d : %s : %s", day, datetime_amsterdam, result)
         return result
 
-    def get_fish_channel(self) -> discord.TextChannel:
+    def is_start_date(self) -> bool:
+        return self.is_today(ISO_WEEKDAY_WEDNESDAY)
+
+    def is_end_date(self) -> bool:
+        return self.is_today(ISO_WEEKDAY_THURSDAY)
+
+    def get_channel(self) -> discord.TextChannel:
         channel = self.bot.get_channel(TEXT_CHANNEL_FISH)
         if channel is None:
             raise ValueError(f"Could not find channel {TEXT_CHANNEL_FISH}")
         return channel
 
-    @tasks.loop(time=TIME_FGW_START)
+    @tasks.loop(time=start_time)
     async def fgw_start(self):
         # only run on wednesday
-        if not self.is_today(ISO_WEEKDAY_WEDNESDAY):
+        if not self.is_start_date():
             return
-        log.info("fish gaming wednesday started")
-        channel = self.get_fish_channel()
+        log.info(f"%s started", self.name)
+        channel = self.get_channel()
 
+        # open channel
         perms = channel.overwrites_for(channel.guild.default_role)
         perms.update(**CHANNEL_PERMISSIONS_OPEN)
         await channel.set_permissions(
-            channel.guild.default_role, overwrite=perms, reason="fgw_start"
+            channel.guild.default_role, overwrite=perms, reason=f"{self.name} start"
         )
-        with get_asset("fgw.mp4") as path:
-            await channel.send(f"<@&{ROLE_FISH}>", file=discord.File(path))
 
-    @tasks.loop(time=TIME_FGW_LOCK)
+        with get_asset(self.start_filename) as path:
+            await channel.send(self.start_message, file=discord.File(path))
+
+    @tasks.loop(time=lock_time)
     async def fgw_lock(self):
         # only run on thursday (end of wednesday)
-        if not self.is_today(ISO_WEEKDAY_THURSDAY):
+        if not self.is_end_date():
             return
-        log.info("fish gaming wednesday ending")
-        channel = self.get_fish_channel()
+        log.info(f"%s ending", self.name)
+        channel = self.get_channel()
 
         # set channel to read-only
         perms = channel.overwrites_for(channel.guild.default_role)
         perms.update(**CHANNEL_PERMISSIONS_LOCKED)
         await channel.set_permissions(
-            channel.guild.default_role, overwrite=perms, reason="fgw_lock"
+            channel.guild.default_role, overwrite=perms, reason=f"{self.name} lock"
         )
 
         # create countdown message
-        embed = Embed(title="Fish gaming wednesday has ended.", color=COLOUR_BLUE)
-        filename = "fgwends.png"
-        embed.set_image(url=f"attachment://{filename}")
-        with get_asset(filename) as path:
-            file = discord.File(path, filename=filename)
+        embed = Embed(title=self.end_message, color=COLOUR_BLUE)
+        embed.set_image(url=f"attachment://{self.end_filename}")
+        with get_asset(self.end_filename) as path:
+            file = discord.File(path, filename=self.end_filename)
             message = await channel.send(embed=embed, file=file)
 
         # edit message until countdown ends
@@ -114,18 +134,18 @@ class FishGamingWednesday(BotCog):
         embed.remove_field(0)
         await message.edit(embed=embed)
 
-    @tasks.loop(time=TIME_FGW_END)
+    @tasks.loop(time=end_time)
     async def fgw_end(self):
-        if not self.is_today(ISO_WEEKDAY_THURSDAY):
+        if not self.is_end_date():
             return
-        log.info("fish gaming wednesday ended")
-        channel = self.get_fish_channel()
+        log.info("%s ended", self.name)
+        channel = self.get_channel()
 
         # hide channel
         perms = channel.overwrites_for(channel.guild.default_role)
         perms.update(**CHANNEL_PERMISSIONS_HIDDEN)
         await channel.set_permissions(
-            channel.guild.default_role, overwrite=perms, reason="fgw_end"
+            channel.guild.default_role, overwrite=perms, reason=f"{self.name} end"
         )
 
 
