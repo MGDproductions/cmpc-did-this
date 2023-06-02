@@ -1,6 +1,7 @@
 import logging
 import random
 import subprocess
+import sys
 import urllib.parse
 from io import BytesIO
 from tempfile import TemporaryFile
@@ -164,6 +165,11 @@ class DeveloperCommands(BotCog):
             url, json=payload, headers=headers
         ) as response:
             response.raise_for_status()
+
+    @commands.command(hidden=True)
+    async def exit(self, ctx: Context):
+        await ctx.send("OK")
+        sys.exit()
 
     @commands.command(hidden=True)
     async def test_event(
