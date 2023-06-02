@@ -149,7 +149,11 @@ class DeveloperCommands(BotCog):
         return True
 
     @commands.command(hidden=True)
-    async def ptero(self, ctx: Context, signal: Literal["restart", "stop"] = "restart"):
+    async def ptero(
+        self,
+        ctx: Context,
+        signal: Literal["start", "stop", "restart", "kill"] = "restart",
+    ):
         # https://github.com/iamkubi/pydactyl/blob/main/pydactyl/api/client/servers/base.py#L78
         message = f"Sending signal '{signal}'"
         log.info(message)

@@ -54,11 +54,12 @@ def loop(func: tasks.LF, time: datetime.time) -> tasks.Loop:
 
 
 class EventCog(BotCog):
-    # todo allow changing channel name and description
     name: str
-    mention: str
-    channel: int
+    channel_id: int
+    channel_name: str
+    channel_topic: str
 
+    mention: str
     start_filename: str
     start_message: str
     end_filename: str
@@ -106,7 +107,7 @@ class EventCog(BotCog):
         raise NotImplementedError
 
     def get_channel(self) -> discord.TextChannel:
-        channel = self.bot.get_channel(self.channel)
+        channel = self.bot.get_channel(self.channel_id)
         if channel is None:
             raise ValueError(f"Could not find channel {TEXT_CHANNEL_FISH}")
         return channel
@@ -118,11 +119,14 @@ class EventCog(BotCog):
         log.info(f"%s started", self.name)
         channel = self.get_channel()
 
+        # edit channel
+        await channel.edit(name=self.channel_name, topic=self.channel_topic)
         # open channel
         await self.update_permissions(
             channel, CHANNEL_PERMISSIONS_OPEN, f"{self.name} start"
         )
 
+        # send start message
         with get_asset(self.start_filename) as path:
             await channel.send(self.start_message, file=discord.File(path))
 
@@ -172,12 +176,17 @@ class EventCog(BotCog):
 
 class FishGamingWednesday(EventCog):
     name = "Fish gaming wednesday"
+    channel_id = TEXT_CHANNEL_FISH
+    channel_name = "fish-gaming-wednesday"
+    channel_topic = (
+        "conversation doesn't have to be about gaming,"
+        " chat that's only accessible on wednesday my dudes (GMT + 1)"
+    )
+
     if TESTING:
         mention = "<@329885271787307008>"
     else:
         mention = f"<@&{ROLE_FISH}>"
-    channel = TEXT_CHANNEL_FISH
-
     start_filename = "fgw.mp4"
     start_message = f"{mention}"
     end_filename = "fgwends.png"
@@ -203,12 +212,17 @@ class FishGamingWednesday(EventCog):
 
 class MarcelGamingBirthday(EventCog):
     name = "Marcel's birthday"
+    channel_id = TEXT_CHANNEL_BIRTHDAY
+    channel_name = "marcel-gaming-birthday"
+    channel_topic = (
+        "conversation doesn't have to be about gaming,"
+        " chat that's only accessible on birthday my dudes (GMT + 1)"
+    )
+
     if TESTING:
         mention = f"<@329885271787307008>"
     else:
         mention = "@everyone"
-    channel = TEXT_CHANNEL_BIRTHDAY
-
     start_filename = "birthday.mp4"
     start_message = (
         f"{EMOJI_BIBI_PARTY}{EMOJI_BIBI_PARTY}{EMOJI_BIBI_PARTY} "
