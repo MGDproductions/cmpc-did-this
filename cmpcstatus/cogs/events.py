@@ -1,6 +1,7 @@
 import asyncio
 import datetime
 import logging
+from typing import Mapping
 
 import discord
 from discord import Embed
@@ -34,6 +35,7 @@ log = logging.getLogger(__name__)
 
 # todo command to test these
 
+
 class FishGamingWednesday(BotCog):
     name = "fish gaming wednesday"
 
@@ -63,6 +65,16 @@ class FishGamingWednesday(BotCog):
             t.stop()
 
     @staticmethod
+    async def update_permissions(
+        channel: discord.TextChannel, permissions: Mapping[str, bool], reason: str
+    ):
+        perms = channel.overwrites_for(channel.guild.default_role)
+        perms.update(**permissions)
+        await channel.set_permissions(
+            channel.guild.default_role, overwrite=perms, reason=reason
+        )
+
+    @staticmethod
     def is_today(day: int) -> bool:
         datetime_amsterdam = datetime.datetime.now(TZ_AMSTERDAM)
         result = datetime_amsterdam.isoweekday() == day
@@ -90,10 +102,8 @@ class FishGamingWednesday(BotCog):
         channel = self.get_channel()
 
         # open channel
-        perms = channel.overwrites_for(channel.guild.default_role)
-        perms.update(**CHANNEL_PERMISSIONS_OPEN)
-        await channel.set_permissions(
-            channel.guild.default_role, overwrite=perms, reason=f"{self.name} start"
+        await self.update_permissions(
+            channel, CHANNEL_PERMISSIONS_OPEN, f"{self.name} start"
         )
 
         with get_asset(self.start_filename) as path:
@@ -108,10 +118,8 @@ class FishGamingWednesday(BotCog):
         channel = self.get_channel()
 
         # set channel to read-only
-        perms = channel.overwrites_for(channel.guild.default_role)
-        perms.update(**CHANNEL_PERMISSIONS_LOCKED)
-        await channel.set_permissions(
-            channel.guild.default_role, overwrite=perms, reason=f"{self.name} lock"
+        await self.update_permissions(
+            channel, CHANNEL_PERMISSIONS_LOCKED, f"{self.name} lock"
         )
 
         # create countdown message
@@ -142,10 +150,8 @@ class FishGamingWednesday(BotCog):
         channel = self.get_channel()
 
         # hide channel
-        perms = channel.overwrites_for(channel.guild.default_role)
-        perms.update(**CHANNEL_PERMISSIONS_HIDDEN)
-        await channel.set_permissions(
-            channel.guild.default_role, overwrite=perms, reason=f"{self.name} end"
+        await self.update_permissions(
+            channel, CHANNEL_PERMISSIONS_HIDDEN, f"{self.name} end"
         )
 
 
