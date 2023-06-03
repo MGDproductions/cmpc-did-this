@@ -58,7 +58,14 @@ class BasicCommands(BotCog):
         await ctx.send(shorten)
 
     @commands.hybrid_command(name="gif", aliases=("g",))
-    async def random_gif(self, ctx: Context, *, search: Optional[str]):
+    async def random_gif(
+        self,
+        ctx: Context,
+        *,
+        search: Optional[str] = commands.parameter(
+            description="gives you a random gif that matches your search term example: random gif cat"
+        ),
+    ):
         """gives you a random gif"""
         async with ctx.typing():
             if search is None:
@@ -102,7 +109,7 @@ class BasicCommands(BotCog):
 
     @commands.hybrid_command(aliases=("code", "git", "github"))
     async def source(self, ctx: Context, upload: bool = False):
-        """Send the source code for this boy."""
+        """gives you the source code for this boy"""
         message = await ctx.send("https://github.com/MDproductions-dev/cmpc-did-this")
 
         if upload:
@@ -125,16 +132,18 @@ class BasicCommands(BotCog):
         code = int(status)
         return code
 
-    @commands.hybrid_command(aliases=("http", "httpcat"))
+    @commands.hybrid_command(name="httpcat", aliases=("http",))
     async def http_cat(self, ctx: Context, status_code: Optional[int]):
+        """gives you a cat based on an HTTP error code"""
         if status_code is None:
             status_code = self.random_http_status_code()
         url = f"https://http.cat/{status_code}.jpg"
         await self.ping_url(url)
         await ctx.send(url)
 
-    @commands.hybrid_command(aliases=("httpdog",))
+    @commands.hybrid_command(name="httpdog")
     async def http_dog(self, ctx: Context, status_code: Optional[int]):
+        """gives you a dog based on an HTTP error code"""
         if status_code is None:
             status_code = self.random_http_status_code()
         url = f"https://httpstatusdogs.com/img/{status_code}.jpg"

@@ -4,7 +4,7 @@ import logging
 from typing import Mapping
 
 import discord
-from discord import Embed
+from discord import Embed, TextChannel
 from discord.ext import tasks
 
 from cmpcstatus.cogs._base import BotCog
@@ -92,7 +92,7 @@ class EventCog(BotCog):
 
     @staticmethod
     async def update_permissions(
-        channel: discord.TextChannel, permissions: Mapping[str, bool], reason: str
+        channel: TextChannel, permissions: Mapping[str, bool], reason: str
     ):
         perms = channel.overwrites_for(channel.guild.default_role)
         perms.update(**permissions)
@@ -106,11 +106,15 @@ class EventCog(BotCog):
     def is_end_date(self) -> bool:
         raise NotImplementedError
 
-    def get_channel(self) -> discord.TextChannel:
+    def get_channel(self) -> TextChannel:
         channel = self.bot.get_channel(self.channel_id)
         if channel is None:
             raise ValueError(f"Could not find channel {TEXT_CHANNEL_FISH}")
         return channel
+
+    async def send_start_message(self, channel: TextChannel):
+        with get_asset(self.start_filename) as path:
+            await channel.send(self.start_message, file=discord.File(path))
 
     async def event_start(self):
         # only run on wednesday
@@ -127,8 +131,7 @@ class EventCog(BotCog):
         )
 
         # send start message
-        with get_asset(self.start_filename) as path:
-            await channel.send(self.start_message, file=discord.File(path))
+        await self.send_start_message(channel)
 
     async def event_lock(self):
         # only run on thursday (end of wednesday)
@@ -225,13 +228,13 @@ class MarcelGamingBirthday(EventCog):
         mention = "@everyone"
     start_filename = "birthday.mp4"
     start_message = (
-        f"{EMOJI_BIBI_PARTY}{EMOJI_BIBI_PARTY}{EMOJI_BIBI_PARTY} "
+        f"{EMOJI_BIBI_PARTY}{EMOJI_BIBI_PARTY}{EMOJI_BIBI_PARTY}\n"
         f"{mention} It's Marcel's birthday today!"
         " As a birthday gift he wants all the cat pictures in the world."
         " Drop them in this chat before he wakes up!"
-        f"{EMOJI_BIBI_PARTY}{EMOJI_BIBI_PARTY}{EMOJI_BIBI_PARTY}"
+        f"\n{EMOJI_BIBI_PARTY}{EMOJI_BIBI_PARTY}{EMOJI_BIBI_PARTY}"
     )
-    end_filename = "fgwends.png"  # todo
+    end_filename = "mgbends.png"
     end_message = f"{name} has ended."
 
     start_time = TIME_BDAY_START
@@ -250,3 +253,18 @@ class MarcelGamingBirthday(EventCog):
 
     def is_end_date(self) -> bool:
         return self.is_date(DATE_BIRTHDAY_MONTH, DATE_BIRTHDAY_DAY + 1)
+
+    async def send_start_message(self, channel: TextChannel):
+        # regular message
+        await channel.send(self.start_message)
+        # video in the hydraulic press
+        for asset in ("press_1.png", "birthday_bounce.webm", "press_1_vertical.png"):
+            with get_asset(asset) as path:
+                await channel.send(file=discord.File(path))
+        await channel.send(
+            "damn I put the birthday vido in THE PRESS "
+            "and it got squished im fucking sory compressipn gone wrong"
+        )
+        await channel.send("marcel agming biethday")
+        with get_asset("mgb.mp4") as path:
+            await channel.send(file=discord.File(path))
