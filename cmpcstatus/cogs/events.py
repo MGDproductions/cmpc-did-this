@@ -4,7 +4,7 @@ import logging
 from typing import Mapping
 
 import discord
-from discord import Embed
+from discord import Embed, TextChannel
 from discord.ext import tasks
 
 from cmpcstatus.cogs._base import BotCog
@@ -92,7 +92,7 @@ class EventCog(BotCog):
 
     @staticmethod
     async def update_permissions(
-        channel: discord.TextChannel, permissions: Mapping[str, bool], reason: str
+        channel: TextChannel, permissions: Mapping[str, bool], reason: str
     ):
         perms = channel.overwrites_for(channel.guild.default_role)
         perms.update(**permissions)
@@ -106,11 +106,15 @@ class EventCog(BotCog):
     def is_end_date(self) -> bool:
         raise NotImplementedError
 
-    def get_channel(self) -> discord.TextChannel:
+    def get_channel(self) -> TextChannel:
         channel = self.bot.get_channel(self.channel_id)
         if channel is None:
             raise ValueError(f"Could not find channel {TEXT_CHANNEL_FISH}")
         return channel
+
+    async def send_start_message(self, channel: TextChannel):
+        with get_asset(self.start_filename) as path:
+            await channel.send(self.start_message, file=discord.File(path))
 
     async def event_start(self):
         # only run on wednesday
@@ -127,8 +131,7 @@ class EventCog(BotCog):
         )
 
         # send start message
-        with get_asset(self.start_filename) as path:
-            await channel.send(self.start_message, file=discord.File(path))
+        await self.send_start_message(channel)
 
     async def event_lock(self):
         # only run on thursday (end of wednesday)
