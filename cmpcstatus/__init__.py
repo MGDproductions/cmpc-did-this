@@ -18,10 +18,8 @@ def main():
     )
 
     log.info("Connecting to discord...")
-    # remove fancy ass shell colour that looks dumb in dark theme
-    formatter = logging.Formatter(logging.BASIC_FORMAT)
     token = bot_instance.config.discord_token
-    bot_instance.run(token, log_formatter=formatter)
+    bot_instance.run(token)
 
 
 if __name__ == "__main__":

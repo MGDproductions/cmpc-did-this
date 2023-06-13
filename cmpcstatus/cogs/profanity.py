@@ -121,7 +121,7 @@ class ProfanityLeaderboard(BotCog):
             inline = not PROFANITY_ROWS_INLINE
         return rows, inline
 
-    @commands.hybrid_command(aliases=("leaderboard", "lb"))
+    @commands.command(aliases=("leaderboard", "lb"))
     async def leaderboard_person(
         self, ctx: Context, person: Optional[Member], rows: Optional[int]
     ):
@@ -155,7 +155,7 @@ class ProfanityLeaderboard(BotCog):
         await ctx.send(embed=embed, allowed_mentions=MENTION_NONE)
 
     # lock bicking lawyer
-    @commands.hybrid_command(aliases=("leaderblame", "lbl"))
+    @commands.command(aliases=("leaderblame", "lbl"))
     async def leaderboard_word(
         self,
         ctx: Context,

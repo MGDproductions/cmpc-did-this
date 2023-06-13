@@ -22,7 +22,7 @@ log = logging.getLogger(__name__)
 
 
 class BasicCommands(BotCog):
-    @commands.hybrid_command(name="capybara", aliases=("capy",))
+    @commands.command(name="capybara", aliases=("capy",))
     async def random_capybara(self, ctx: Context):
         """gives you a random capybara"""
         async with ctx.typing():
@@ -36,7 +36,7 @@ class BasicCommands(BotCog):
             embed.set_image(url=f"attachment://{filename}")
         await ctx.send(embed=embed, file=file)
 
-    @commands.hybrid_command(name="cat")
+    @commands.command(name="cat")
     async def random_cat(self, ctx: Context):
         """gives you a random cat"""
         async with ctx.typing():
@@ -48,7 +48,7 @@ class BasicCommands(BotCog):
             embed.set_image(url=f"attachment://{filename}")
         await ctx.send(embed=embed, file=file)
 
-    @commands.hybrid_command(name="game")
+    @commands.command(name="game")
     async def random_game(self, ctx: Context):
         """gives you a random game"""
         async with ctx.bot.session.get(
@@ -57,16 +57,17 @@ class BasicCommands(BotCog):
             shorten = str(response.url).removesuffix("?snr=1_239_random_")
         await ctx.send(shorten)
 
-    @commands.hybrid_command(name="gif", aliases=("g",))
+    @commands.command(name="gif", aliases=("g",))
     async def random_gif(
         self,
         ctx: Context,
         *,
-        search: Optional[str] = commands.parameter(
-            description="gives you a random gif that matches your search term example: random gif cat"
-        ),
+        search: Optional[str]
     ):
-        """gives you a random gif"""
+        """gives you a random gif
+
+        search: gives you a random gif that matches your search term example: random gif cat
+        """
         async with ctx.typing():
             if search is None:
                 search = random.choice(common_words)
@@ -87,13 +88,13 @@ class BasicCommands(BotCog):
 
         await ctx.send(url)
 
-    @commands.hybrid_command(name="number")
+    @commands.command(name="number")
     async def random_number(self, ctx: Context, startnumber: int, endnumber: int):
         """gives you a random number"""
         randomnumber = random.randint(startnumber, endnumber)
         await ctx.send(f"{randomnumber}")
 
-    @commands.hybrid_command(name="word")
+    @commands.command(name="word")
     async def random_word(self, ctx: Context):
         """gives you a random word"""
         return await ctx.send(random.choice(common_words))
@@ -107,7 +108,7 @@ class BasicCommands(BotCog):
     async def say(self, ctx: Context, *, text: str):
         return await ctx.send(text)
 
-    @commands.hybrid_command(aliases=("code", "git", "github"))
+    @commands.command(aliases=("code", "git", "github"))
     async def source(self, ctx: Context, upload: bool = False):
         """gives you the source code for this boy"""
         message = await ctx.send("https://github.com/MDproductions-dev/cmpc-did-this")
@@ -132,7 +133,7 @@ class BasicCommands(BotCog):
         code = int(status)
         return code
 
-    @commands.hybrid_command(name="httpcat", aliases=("http",))
+    @commands.command(name="httpcat", aliases=("http",))
     async def http_cat(self, ctx: Context, status_code: Optional[int]):
         """gives you a cat based on an HTTP error code"""
         if status_code is None:
@@ -141,7 +142,7 @@ class BasicCommands(BotCog):
         await self.ping_url(url)
         await ctx.send(url)
 
-    @commands.hybrid_command(name="httpdog")
+    @commands.command(name="httpdog")
     async def http_dog(self, ctx: Context, status_code: Optional[int]):
         """gives you a dog based on an HTTP error code"""
         if status_code is None:

@@ -49,6 +49,7 @@ def loop(func: tasks.LF, time: datetime.time) -> tasks.Loop:
         time=time,
         count=None,
         reconnect=True,
+        loop=asyncio.get_event_loop(),
     )
     return event
 

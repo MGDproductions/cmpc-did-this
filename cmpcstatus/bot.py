@@ -72,14 +72,14 @@ class Bot(commands.Bot):
         self.session = aiohttp.ClientSession()
 
         # add default cogs
-        await self.add_cog(BasicCommands(self))
-        await self.add_cog(DeveloperCommands(self))
+        self.add_cog(BasicCommands(self))
+        self.add_cog(DeveloperCommands(self))
         if ENABLE_BIRTHDAY:
-            await self.add_cog(MarcelGamingBirthday(self))
+            self.add_cog(MarcelGamingBirthday(self))
         if ENABLE_FISH:
-            await self.add_cog(FishGamingWednesday(self))
+            self.add_cog(FishGamingWednesday(self))
         if ENABLE_PROFANITY:
-            await self.add_cog(ProfanityLeaderboard(self))
+            self.add_cog(ProfanityLeaderboard(self))
 
         print("done")  # this line is needed to work with ptero
 
@@ -96,11 +96,10 @@ class Bot(commands.Bot):
 
         # upload slash commands
         if ENABLE_SLASH_COMMANDS:
-            await self.tree.sync()
+            await self.register_application_commands()
             if TESTING:
                 server = self.get_guild(GUILD_EGGYBOI)
-                self.tree.copy_global_to(guild=server)
-                await self.tree.sync(guild=server)
+                await self.register_application_commands(guild=server)
 
         # set activity
         await self.change_presence(
