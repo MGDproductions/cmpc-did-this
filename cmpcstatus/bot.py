@@ -27,11 +27,13 @@ from cmpcstatus.constants import (
     ENABLE_FISH,
     ENABLE_PROFANITY,
     ENABLE_READY_MESSAGE,
+    ENABLE_SLASH_COMMANDS,
     ENABLE_WELCOME,
     FONT_SIZE_WELCOME,
     GUILD_EGGYBOI,
     PATH_CONFIG,
     ROLE_MEMBER,
+    TESTING,
     TEXT_CHANNEL_BOT_COMMANDS,
     TEXT_CHANNEL_GENERAL,
     TZ_AMSTERDAM,
@@ -91,18 +93,23 @@ class Bot(commands.Bot):
         if ENABLE_CLOCK:
             if not self.clock.is_running():
                 self.clock.start()
+
         # upload slash commands
-        server = self.get_guild(GUILD_EGGYBOI)
-        self.tree.copy_global_to(guild=server)
-        await self.tree.sync(guild=server)
+        if ENABLE_SLASH_COMMANDS:
+            await self.tree.sync()
+            if TESTING:
+                server = self.get_guild(GUILD_EGGYBOI)
+                self.tree.copy_global_to(guild=server)
+                await self.tree.sync(guild=server)
+
         # set activity
         await self.change_presence(
             activity=discord.Activity(
                 type=discord.ActivityType.watching, name="the cmpc discord"
             )
         )
-        log.info(f"Connected to discord as: %s", self.user)
 
+        log.info(f"Connected to discord as: %s", self.user)
         await self.send_ready_message(f"Connected from `{platform.node()}`")
 
     async def close(self):
