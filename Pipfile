@@ -6,7 +6,7 @@ name = "pypi"
 [packages]
 aiosqlite = "~=0.18.0"
 better-profanity = "~=0.7.0"
-"discord.py" = {extras = ["speed"], version = "~=2.2.2"}
+"discord.py" = {extras = ["speed"], version = "~=2.2.3"}
 pillow = "~=9.5.0"
 tzdata = "*"
 
