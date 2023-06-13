@@ -65,6 +65,7 @@ class Bot(commands.Bot):
     def __init__(self, *args, **kwargs):
         self.config = load_config()
         self.session: Optional[aiohttp.ClientSession] = None
+        self.setup_done = False
         super().__init__(*args, **kwargs)
 
     async def setup_hook(self):
@@ -89,6 +90,10 @@ class Bot(commands.Bot):
             await ready_channel.send(message)
 
     async def on_ready(self):
+        if not self.setup_done:
+            await self.setup_hook()
+            self.setup_done = True
+
         # start task loops
         if ENABLE_CLOCK:
             if not self.clock.is_running():
