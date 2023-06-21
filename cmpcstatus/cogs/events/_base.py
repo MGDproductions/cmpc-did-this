@@ -16,6 +16,7 @@ from cmpcstatus.constants import (
     COUNTDOWN_MINUTE,
     TESTING,
     TEXT_CHANNEL_FISH,
+    TZ_AMSTERDAM,
 )
 from cmpcstatus.util import get_asset
 
@@ -26,6 +27,7 @@ if TESTING:
     COUNTDOWN_MINUTE = 2
 
 
+# todo docstrings for everything
 def loop(func: tasks.LF, time: datetime.time) -> tasks.Loop:
     event = tasks.Loop(
         func,
@@ -85,6 +87,13 @@ class EventCog(BotCog):
         await channel.set_permissions(
             channel.guild.default_role, overwrite=perms, reason=reason
         )
+
+    @staticmethod
+    def is_today(day: int) -> bool:
+        datetime_amsterdam = datetime.datetime.now(TZ_AMSTERDAM)
+        result = datetime_amsterdam.isoweekday() == day
+        log.info("day-of-week check %d : %s : %s", day, datetime_amsterdam, result)
+        return result
 
     def is_start_date(self) -> bool:
         raise NotImplementedError

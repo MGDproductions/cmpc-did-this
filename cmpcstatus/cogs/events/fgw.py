@@ -1,4 +1,3 @@
-import datetime
 import logging
 
 from cmpcstatus.cogs.events import EventCog
@@ -10,8 +9,7 @@ from cmpcstatus.constants import (
     TEXT_CHANNEL_FISH,
     TIME_FGW_END,
     TIME_FGW_LOCK,
-    TIME_FGW_START,
-    TZ_AMSTERDAM,
+    TIME_FGW_START, USER_JMCB,
 )
 
 log = logging.getLogger(__name__)
@@ -27,7 +25,7 @@ class FishGamingWednesday(EventCog):
     )
 
     if TESTING:
-        mention = "<@329885271787307008>"
+        mention = f"<@{USER_JMCB}>"
     else:
         mention = f"<@&{ROLE_FISH}>"
     start_filename = "fgw.mp4"
@@ -38,13 +36,6 @@ class FishGamingWednesday(EventCog):
     start_time = TIME_FGW_START
     lock_time = TIME_FGW_LOCK
     end_time = TIME_FGW_END
-
-    @staticmethod
-    def is_today(day: int) -> bool:
-        datetime_amsterdam = datetime.datetime.now(TZ_AMSTERDAM)
-        result = datetime_amsterdam.isoweekday() == day
-        log.info("day-of-week check %d : %s : %s", day, datetime_amsterdam, result)
-        return result
 
     def is_start_date(self) -> bool:
         return self.is_today(ISO_WEEKDAY_WEDNESDAY)
