@@ -27,5 +27,5 @@ class EpicFreeGame(EventCog):
     def is_start_date(self) -> bool:
         return self.is_today(ISO_WEEKDAY_THURSDAY)
 
-    def send_start_message(self, channel: TextChannel):
+    async def send_start_message(self, channel: TextChannel):
         await channel.send(self.start_message)
