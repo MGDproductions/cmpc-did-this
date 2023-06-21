@@ -15,7 +15,7 @@ from discord.ext.commands import Context
 
 from cmpcstatus.assets.words import common_words
 from cmpcstatus.cogs._base import BotCog
-from cmpcstatus.cogs.events import EventCog
+from cmpcstatus.cogs.events._base import EventCog
 from cmpcstatus.constants import COLOUR_RED, ROLE_DEVELOPER
 
 log = logging.getLogger(__name__)
