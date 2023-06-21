@@ -4,7 +4,7 @@ import logging
 import discord
 from discord import TextChannel
 
-from cmpcstatus.cogs.events._base import EventCog
+from cmpcstatus.cogs.events import EventCog
 from cmpcstatus.constants import (
     DATE_BIRTHDAY_DAY,
     DATE_BIRTHDAY_MONTH,

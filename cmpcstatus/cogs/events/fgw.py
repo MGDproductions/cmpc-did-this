@@ -1,7 +1,7 @@
 import datetime
 import logging
 
-from cmpcstatus.cogs.events._base import EventCog
+from cmpcstatus.cogs.events import EventCog
 from cmpcstatus.constants import (
     ISO_WEEKDAY_THURSDAY,
     ISO_WEEKDAY_WEDNESDAY,
