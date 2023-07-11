@@ -9,7 +9,8 @@ from cmpcstatus.constants import (
     TEXT_CHANNEL_FISH,
     TIME_FGW_END,
     TIME_FGW_LOCK,
-    TIME_FGW_START, USER_JMCB,
+    TIME_FGW_START,
+    USER_JMCB,
 )
 
 log = logging.getLogger(__name__)
