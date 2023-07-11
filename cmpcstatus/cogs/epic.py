@@ -1,12 +1,13 @@
 import datetime
+import logging
 import re
 from typing import NamedTuple
 
 import discord
+import discord.ext.tasks
 from bs4 import BeautifulSoup, Tag
-from discord import TextChannel
 
-from cmpcstatus.cogs.events import EventCog
+from ._base import BotCog
 from cmpcstatus.constants import (
     ISO_WEEKDAY_THURSDAY,
     TESTING,
@@ -23,13 +24,16 @@ RE_GAME1 = re.compile(
 URL_BASE = "https://store.epicgames.com"
 
 
+log = logging.getLogger(__name__)
+
+
 class Game(NamedTuple):
     name: str
     url: str
     image_url: str
 
 
-class EpicFreeGame(EventCog):
+class EpicFreeGame(BotCog):
     channel_id = TEXT_CHANNEL_GENERAL
 
     start_time = TIME_EPIC_FREE_GAME
@@ -38,11 +42,6 @@ class EpicFreeGame(EventCog):
     else:
         mention = f"<@&{ROLE_GAMING_GANG}>"
     start_message = f"{mention} new free game <{URL_BASE}>"
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # only need the start routine
-        self.tasks = (self.event_start,)
 
     @staticmethod
     def parse_game(tag: Tag) -> Game:
@@ -74,10 +73,24 @@ class EpicFreeGame(EventCog):
 
         return game1
 
+    @staticmethod
+    def is_today(day: int) -> bool:
+        datetime_amsterdam = datetime.datetime.now(TZ_AMSTERDAM)
+        result = datetime_amsterdam.isoweekday() == day
+        log.info("day-of-week check %d : %s : %s", day, datetime_amsterdam, result)
+        return result
+
     def is_start_date(self) -> bool:
         return self.is_today(ISO_WEEKDAY_THURSDAY)
 
-    async def send_start_message(self, channel: TextChannel):
+    @discord.ext.tasks.loop(time=TIME_EPIC_FREE_GAME)
+    async def send_reminder(self):
+        if not TESTING and not self.is_start_date():
+            return
+        log.info("sending EGS free game cry")
+
         game = await self.get_free_game()
         embed = self.embed_from_game(game)
+
+        channel = self.bot.get_channel(self.channel_id)
         await channel.send(self.start_message, embed=embed)
