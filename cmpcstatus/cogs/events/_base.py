@@ -16,6 +16,8 @@ from cmpcstatus.constants import (
     COUNTDOWN_MINUTE,
     TESTING,
     TEXT_CHANNEL_FISH,
+    TIME_FIVE_PAST_MIDNIGHT,
+    TIME_MIDNIGHT,
     TZ_AMSTERDAM,
 )
 from cmpcstatus.util import get_asset
@@ -53,9 +55,9 @@ class EventCog(BotCog):
     end_filename: str
     end_message: str
 
-    start_time: datetime.time
-    lock_time: datetime.time
-    end_time: datetime.time
+    start_time: datetime.time = TIME_MIDNIGHT
+    lock_time: datetime.time = TIME_MIDNIGHT
+    end_time: datetime.time = TIME_FIVE_PAST_MIDNIGHT
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
