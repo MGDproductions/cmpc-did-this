@@ -14,11 +14,10 @@ from PIL import Image, ImageDraw, ImageFont
 
 from cmpcstatus.cogs.commands import BasicCommands, DeveloperCommands
 from cmpcstatus.cogs.events import (
-    EpicFreeGame,
     FishGamingWednesday,
     MarcelGamingBirthday,
 )
-from cmpcstatus.cogs.profanity import ProfanityLeaderboard
+from cmpcstatus.cogs import EpicFreeGame, ProfanityLeaderboard
 from cmpcstatus.constants import (
     CLOCK_TIMES,
     COLOUR_GREEN,
