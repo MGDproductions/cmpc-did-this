@@ -11,8 +11,7 @@ INTENTS.message_content = True
 # bot features
 ENABLE_BIRTHDAY = True
 ENABLE_CLOCK = True
-# todo enable
-ENABLE_EPIC = False
+ENABLE_EPIC = True
 ENABLE_FISH = True
 ENABLE_PROFANITY = True
 ENABLE_READY_MESSAGE = True
