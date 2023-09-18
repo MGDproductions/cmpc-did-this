@@ -98,6 +98,7 @@ class Bot(commands.Bot):
         # start task loops
         if ENABLE_CLOCK:
             if not self.clock.is_running():
+                await self.clock()
                 self.clock.start()
 
         # upload slash commands

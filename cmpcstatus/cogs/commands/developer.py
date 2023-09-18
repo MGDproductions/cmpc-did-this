@@ -104,6 +104,11 @@ class DeveloperCommands(BotCog):
         await ctx.send("Called event")
 
     @commands.command(hidden=True)
+    async def update_clock(self, ctx: Context):
+        await self.bot.clock()
+        await ctx.send("Updated")
+
+    @commands.command(hidden=True)
     async def git_last(self, ctx: Context):
         stdout = subprocess.check_output(["git", "log", "--max-count=1"], text=True)
         await ctx.send(f"```{stdout}```")
