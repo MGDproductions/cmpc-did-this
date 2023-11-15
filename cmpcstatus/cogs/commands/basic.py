@@ -151,10 +151,13 @@ class BasicCommands(BotCog):
         await ctx.send(url)
 
     @commands.hybrid_command(name="animal", aliases=("nickname", "nick"))
-    async def random_animal(self, ctx: Context):
+    async def random_animal(self, ctx: Context, nick: bool = True):
         animal = random.choice(animals)
         animal = capwords(animal)
-        await ctx.author.edit(nick=animal)
+        if nick:
+            await ctx.author.edit(nick=animal)
+        else:
+            await ctx.send(animal)
 
     # todo? command to invoke another command and delete the invoking message
     # @commands.command(hidden=True)
