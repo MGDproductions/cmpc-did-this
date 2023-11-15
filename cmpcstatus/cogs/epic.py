@@ -7,14 +7,15 @@ import discord
 import discord.ext.tasks
 from bs4 import BeautifulSoup, Tag
 
-from ._base import BotCog
 from cmpcstatus.constants import (
     ISO_WEEKDAY_THURSDAY,
     TESTING,
-    TZ_AMSTERDAM,
     TEXT_CHANNEL_GENERAL,
+    TZ_AMSTERDAM,
     USER_JMCB,
 )
+
+from ._base import BotCog
 
 ROLE_GAMING_GANG = 785222184309489665
 TIME_EPIC_FREE_GAME = datetime.time(hour=17, tzinfo=TZ_AMSTERDAM)

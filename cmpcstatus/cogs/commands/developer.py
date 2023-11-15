@@ -13,7 +13,6 @@ from cmpcstatus.cogs.epic import EpicFreeGame
 from cmpcstatus.cogs.events import EventCog
 from cmpcstatus.constants import ROLE_DEVELOPER
 
-
 log = logging.getLogger(__name__)
 
 
