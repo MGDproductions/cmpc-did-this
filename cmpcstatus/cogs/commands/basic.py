@@ -4,6 +4,7 @@ import subprocess
 import urllib.parse
 from http import HTTPStatus
 from io import BytesIO
+from string import capwords
 from tempfile import TemporaryFile
 from typing import Optional
 
@@ -152,7 +153,7 @@ class BasicCommands(BotCog):
     @commands.hybrid_command(name="animal", aliases=("nickname", "nick"))
     async def random_animal(self, ctx: Context):
         animal = random.choice(animals)
-        animal = animal.title()
+        animal = capwords(animal)
         await ctx.author.edit(nick=animal)
 
     # todo? command to invoke another command and delete the invoking message
