@@ -153,7 +153,6 @@ class BasicCommands(BotCog):
     async def random_animal(self, ctx: Context):
         animal = random.choice(animals)
         animal = animal.title()
-        await ctx.send(animal)
         await ctx.author.edit(nick=animal)
 
     # todo? command to invoke another command and delete the invoking message
