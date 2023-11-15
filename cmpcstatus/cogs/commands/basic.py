@@ -12,6 +12,7 @@ from discord import Embed
 from discord.ext import commands
 from discord.ext.commands import Context
 
+from cmpcstatus.assets.animals import animals
 from cmpcstatus.assets.words import common_words
 from cmpcstatus.cogs import BotCog
 from cmpcstatus.constants import COLOUR_RED
@@ -147,6 +148,13 @@ class BasicCommands(BotCog):
         url = f"https://httpstatusdogs.com/img/{status_code}.jpg"
         await self.ping_url(url)
         await ctx.send(url)
+
+    @commands.hybrid_command(name="animal", aliases=("nickname", "nick"))
+    async def random_animal(self, ctx: Context):
+        animal = random.choice(animals)
+        animal = animal.title()
+        await ctx.send(animal)
+        await ctx.author.edit(nick=animal)
 
     # todo? command to invoke another command and delete the invoking message
     # @commands.command(hidden=True)
