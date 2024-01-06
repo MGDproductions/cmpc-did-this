@@ -12,7 +12,7 @@ from discord.ext import commands, tasks
 from discord.ext.commands import Context
 from PIL import Image, ImageDraw, ImageFont
 
-from cmpcstatus.cogs import ProfanityLeaderboard
+from cmpcstatus.cogs import ProfanityLeaderboard, Quints
 from cmpcstatus.cogs.commands import BasicCommands, DeveloperCommands
 from cmpcstatus.cogs.events import FishGamingWednesday, MarcelGamingBirthday
 from cmpcstatus.constants import (
@@ -80,6 +80,7 @@ class Bot(commands.Bot):
             await self.add_cog(FishGamingWednesday(self))
         if ENABLE_PROFANITY:
             await self.add_cog(ProfanityLeaderboard(self))
+        await self.add_cog(Quints())
 
         print("done")  # this line is needed to work with ptero
 
