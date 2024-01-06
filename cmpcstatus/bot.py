@@ -12,7 +12,7 @@ from discord.ext import commands, tasks
 from discord.ext.commands import Context
 from PIL import Image, ImageDraw, ImageFont
 
-from cmpcstatus.cogs import EpicFreeGame, ProfanityLeaderboard
+from cmpcstatus.cogs import ProfanityLeaderboard
 from cmpcstatus.cogs.commands import BasicCommands, DeveloperCommands
 from cmpcstatus.cogs.events import FishGamingWednesday, MarcelGamingBirthday
 from cmpcstatus.constants import (
@@ -24,7 +24,6 @@ from cmpcstatus.constants import (
     EMOJI_SKULL,
     ENABLE_BIRTHDAY,
     ENABLE_CLOCK,
-    ENABLE_EPIC,
     ENABLE_FISH,
     ENABLE_PROFANITY,
     ENABLE_READY_MESSAGE,
@@ -77,8 +76,6 @@ class Bot(commands.Bot):
         await self.add_cog(DeveloperCommands(self))
         if ENABLE_BIRTHDAY:
             await self.add_cog(MarcelGamingBirthday(self))
-        if ENABLE_EPIC:
-            await self.add_cog(EpicFreeGame(self))
         if ENABLE_FISH:
             await self.add_cog(FishGamingWednesday(self))
         if ENABLE_PROFANITY:

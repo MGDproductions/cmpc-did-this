@@ -9,7 +9,6 @@ from discord.ext import commands
 from discord.ext.commands import Context
 
 from cmpcstatus.cogs import BotCog
-from cmpcstatus.cogs.epic import EpicFreeGame
 from cmpcstatus.cogs.events import EventCog
 from cmpcstatus.constants import ROLE_DEVELOPER
 
@@ -87,19 +86,6 @@ class DeveloperCommands(BotCog):
         }
         requested_event = events[event]
         await requested_event()
-        await ctx.send("Called event")
-
-    @commands.command(hidden=True)
-    async def test_epic(self, ctx: Context):
-        name = "EpicFreeGame"
-
-        await ctx.send("Getting cog")
-        cog = self.bot.get_cog(name)
-        if not isinstance(cog, EpicFreeGame):
-            raise TypeError(f"Not an event cog: {name}")
-        await ctx.send("Got cog")
-
-        await cog.send_reminder()
         await ctx.send("Called event")
 
     @commands.command(hidden=True)
