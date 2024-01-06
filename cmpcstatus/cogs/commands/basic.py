@@ -151,7 +151,9 @@ class BasicCommands(BotCog):
         await ctx.send(url)
 
     @commands.hybrid_command(name="animal", aliases=("nickname", "nick"))
-    async def random_animal(self, ctx: Context, user: discord.Member = None, nick: bool = True):
+    async def random_animal(
+        self, ctx: Context, user: discord.Member = None, nick: bool = True
+    ):
         animal = random.choice(animals)
         animal = capwords(animal)
         if nick:

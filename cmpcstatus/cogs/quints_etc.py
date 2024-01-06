@@ -6,6 +6,7 @@ from cmpcstatus.constants import ROLE_DEVELOPER
 
 
 class Quints(Cog):
+    gif_url = "https://giphy.com/gifs/2lQCCSp19EDAy5d7c7"
     qualifiers = {
         5: "QUINTS",
         6: "SEX",
