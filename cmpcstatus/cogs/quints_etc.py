@@ -24,6 +24,13 @@ class Quints(Cog):
 
         return consecutive
 
+    @staticmethod
+    def truncate_str(string: str, length: int) -> str:
+        if len(string) <= length:
+            return string
+        else:
+            return string[:length]
+
     async def quints(self, message: Message, message_id: int):
         consecutive = self.consecutive_digits(message_id)
 
@@ -31,8 +38,10 @@ class Quints(Cog):
         if qual is None:
             return
 
+        content = self.truncate_str(message.content, 5)
+
         await message.channel.send(
-            f'{message.author.name} sent "{message.content[5:]}..." with Message ID: {message.id} (***{qual}***)'
+            f'{message.author.name} sent "{content}..." with Message ID: {message_id} (***{qual}***)'
         )
 
     @Cog.listener()
