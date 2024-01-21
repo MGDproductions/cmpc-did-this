@@ -4,6 +4,7 @@ import subprocess
 import urllib.parse
 from http import HTTPStatus
 from io import BytesIO
+from pathlib import Path
 from string import capwords
 from tempfile import TemporaryFile
 from typing import Optional
@@ -13,15 +14,24 @@ from discord import Embed
 from discord.ext import commands
 from discord.ext.commands import Context
 
-from cmpcstatus.assets.animals import animals
-from cmpcstatus.assets.words import common_words
 from cmpcstatus.cogs import BotCog
 from cmpcstatus.constants import COLOUR_RED
+from cmpcstatus.util import get_asset
 
 log = logging.getLogger(__name__)
 
 
+def read_lines(path: Path) -> tuple[str, ...]:
+    with open(path, "r", encoding="utf-8") as file:
+        return tuple(li.removesuffix("\n") for li in file.readlines())
+
+
 class BasicCommands(BotCog):
+    with get_asset("words.txt") as path:
+        common_words = read_lines(path)
+    with get_asset("animals.txt") as path:
+        animals = read_lines(path)
+
     @commands.hybrid_command(name="capybara", aliases=("capy",))
     async def random_capybara(self, ctx: Context):
         """gives you a random capybara"""
@@ -69,7 +79,7 @@ class BasicCommands(BotCog):
         """gives you a random gif"""
         async with ctx.typing():
             if search is None:
-                search = random.choice(common_words)
+                search = random.choice(self.common_words)
             search = urllib.parse.quote_plus(search.encode(encoding="utf-8"))
 
             # https://developers.google.com/tenor/guides/endpoints
@@ -96,7 +106,7 @@ class BasicCommands(BotCog):
     @commands.hybrid_command(name="word")
     async def random_word(self, ctx: Context):
         """gives you a random word"""
-        return await ctx.send(random.choice(common_words))
+        return await ctx.send(random.choice(self.common_words))
 
     @commands.command(hidden=True)
     async def testconn(self, ctx: Context):
@@ -154,7 +164,7 @@ class BasicCommands(BotCog):
     async def random_animal(
         self, ctx: Context, user: discord.Member = None, nick: bool = True
     ):
-        animal = random.choice(animals)
+        animal = random.choice(self.animals)
         animal = capwords(animal)
         if nick:
             user = user or ctx.author
