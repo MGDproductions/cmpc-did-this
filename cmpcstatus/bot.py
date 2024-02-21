@@ -2,6 +2,7 @@ import datetime
 import logging
 import platform
 import tomllib
+from dataclasses import dataclass
 from io import BytesIO
 from typing import Optional
 
@@ -44,6 +45,7 @@ from cmpcstatus.util import get_asset
 log = logging.getLogger(__name__)
 
 
+@dataclass
 class BotConfig:
     discord_token: str
     tenor_token: str
@@ -54,10 +56,16 @@ class BotConfig:
 
 def load_config(fp: str = PATH_CONFIG) -> BotConfig:
     with open(fp, "rb") as file:
-        obj = tomllib.load(file)
-    config = BotConfig()
-    for k, v in obj.items():
-        setattr(config, k, v)
+        t = tomllib.load(file)
+
+    config = BotConfig(
+        discord_token=t["discord_token"],
+        tenor_token=t["tenor_token"],
+        ptero_address=t["ptero_address"],
+        ptero_server_id=t["ptero_server_id"],
+        ptero_token=t["ptero_token"],
+    )
+
     return config
 
 
